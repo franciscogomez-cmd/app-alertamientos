@@ -1,0 +1,511 @@
+{
+  "info": {
+    "name": "Alertamientos API",
+    "description": "Colección completa de la API de Alertamientos — NestJS + Drizzle ORM + PostgreSQL",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000/api"
+    },
+    {
+      "key": "token",
+      "value": ""
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.accessToken) {",
+                  "  pm.collectionVariables.set('token', res.accessToken);",
+                  "  console.log('Token guardado automáticamente');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin-alertamientos@sigob.com.mx\",\n  \"password\": \"Admin2026!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Get Profile",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/auth/profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "profile"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Categorías",
+      "item": [
+        {
+          "name": "Crear categoría",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Meteorológica\",\n  \"slug\": \"meteorologica\",\n  \"icono\": \"cloud-rain\",\n  \"colorHex\": \"#3B82F6\",\n  \"descripcion\": \"Alertas relacionadas con fenómenos meteorológicos\",\n  \"activo\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/categorias",
+              "host": ["{{baseUrl}}"],
+              "path": ["categorias"]
+            }
+          }
+        },
+        {
+          "name": "Listar categorías",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/categorias?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["categorias"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "20" },
+                { "key": "busqueda", "value": "", "disabled": true },
+                { "key": "activo", "value": "true", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Obtener categoría por ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/categorias/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["categorias", "1"]
+            }
+          }
+        },
+        {
+          "name": "Actualizar categoría",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Meteorológica (Actualizada)\",\n  \"colorHex\": \"#2563EB\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/categorias/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["categorias", "1"]
+            }
+          }
+        },
+        {
+          "name": "Toggle activo categoría",
+          "request": {
+            "method": "PATCH",
+            "url": {
+              "raw": "{{baseUrl}}/categorias/1/toggle-activo",
+              "host": ["{{baseUrl}}"],
+              "path": ["categorias", "1", "toggle-activo"]
+            }
+          }
+        },
+        {
+          "name": "Eliminar categoría",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/categorias/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["categorias", "1"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Zonas Geográficas",
+      "item": [
+        {
+          "name": "Crear zona (estado)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Ciudad de México\",\n  \"tipo\": \"estado\",\n  \"clavePais\": \"MX\",\n  \"claveEstado\": \"09\",\n  \"centroLatitud\": 19.4326077,\n  \"centroLongitud\": -99.133208,\n  \"radioKm\": 25.5,\n  \"activo\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/zonas",
+              "host": ["{{baseUrl}}"],
+              "path": ["zonas"]
+            }
+          }
+        },
+        {
+          "name": "Crear zona (municipio)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Benito Juárez\",\n  \"tipo\": \"municipio\",\n  \"clavePais\": \"MX\",\n  \"claveEstado\": \"09\",\n  \"claveMunicipio\": \"014\",\n  \"centroLatitud\": 19.3718,\n  \"centroLongitud\": -99.1583,\n  \"radioKm\": 5.0,\n  \"activo\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/zonas",
+              "host": ["{{baseUrl}}"],
+              "path": ["zonas"]
+            }
+          }
+        },
+        {
+          "name": "Crear zona (polígono custom)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Zona Centro Histórico\",\n  \"tipo\": \"poligono_custom\",\n  \"clavePais\": \"MX\",\n  \"claveEstado\": \"09\",\n  \"poligono\": {\n    \"type\": \"Polygon\",\n    \"coordinates\": [[\n      [-99.1400, 19.4300],\n      [-99.1300, 19.4300],\n      [-99.1300, 19.4350],\n      [-99.1400, 19.4350],\n      [-99.1400, 19.4300]\n    ]]\n  },\n  \"activo\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/zonas",
+              "host": ["{{baseUrl}}"],
+              "path": ["zonas"]
+            }
+          }
+        },
+        {
+          "name": "Listar zonas",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/zonas?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["zonas"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "20" },
+                { "key": "busqueda", "value": "", "disabled": true },
+                { "key": "tipo", "value": "estado", "disabled": true },
+                { "key": "claveEstado", "value": "09", "disabled": true },
+                { "key": "activo", "value": "true", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Obtener zona por ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/zonas/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["zonas", "1"]
+            }
+          }
+        },
+        {
+          "name": "Actualizar zona",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"CDMX (Actualizada)\",\n  \"radioKm\": 30.0\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/zonas/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["zonas", "1"]
+            }
+          }
+        },
+        {
+          "name": "Toggle activo zona",
+          "request": {
+            "method": "PATCH",
+            "url": {
+              "raw": "{{baseUrl}}/zonas/1/toggle-activo",
+              "host": ["{{baseUrl}}"],
+              "path": ["zonas", "1", "toggle-activo"]
+            }
+          }
+        },
+        {
+          "name": "Eliminar zona",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/zonas/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["zonas", "1"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Alertas",
+      "item": [
+        {
+          "name": "Crear alerta (básica)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"categoriaId\": 1,\n  \"titulo\": \"Lluvia intensa en la CDMX\",\n  \"descripcion\": \"Se esperan lluvias de 50 a 70 mm en las próximas 6 horas. Se recomienda evitar zonas bajas y cauces de ríos.\",\n  \"nivelSeveridad\": \"preventiva\",\n  \"nivelCobertura\": \"estado\",\n  \"estatus\": \"borrador\",\n  \"fechaInicio\": \"2026-04-07T14:00:00.000Z\",\n  \"fechaFin\": \"2026-04-07T20:00:00.000Z\",\n  \"centroLatitud\": 19.4326077,\n  \"centroLongitud\": -99.133208,\n  \"radioKm\": 25.5,\n  \"acciones\": [\n    \"Evitar zonas bajas\",\n    \"No cruzar cauces de ríos\",\n    \"Tener a la mano documentos importantes\"\n  ],\n  \"mapaVisible\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/alertas",
+              "host": ["{{baseUrl}}"],
+              "path": ["alertas"]
+            }
+          }
+        },
+        {
+          "name": "Crear alerta (con zona y zonas N:M)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"categoriaId\": 1,\n  \"titulo\": \"Sismo de magnitud 5.2 en Oaxaca\",\n  \"descripcion\": \"Se registró un sismo de magnitud 5.2 con epicentro a 30 km al sur de Oaxaca de Juárez. Se activan protocolos de protección civil.\",\n  \"nivelSeveridad\": \"emergencia\",\n  \"nivelCobertura\": \"estado\",\n  \"estatus\": \"activa\",\n  \"fechaInicio\": \"2026-04-07T10:30:00.000Z\",\n  \"zonaId\": 1,\n  \"centroLatitud\": 16.8531,\n  \"centroLongitud\": -96.7253,\n  \"radioKm\": 50,\n  \"imagenUrl\": \"https://ejemplo.com/sismo-oaxaca.jpg\",\n  \"mapaVisible\": true,\n  \"acciones\": [\n    \"Alejarse de edificios dañados\",\n    \"Revisar instalaciones de gas\",\n    \"Acudir a puntos de reunión\"\n  ],\n  \"zonas\": [\n    { \"zonaId\": 1 },\n    { \"zonaId\": 2 }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/alertas",
+              "host": ["{{baseUrl}}"],
+              "path": ["alertas"]
+            }
+          }
+        },
+        {
+          "name": "Crear alerta (con polígono)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"categoriaId\": 2,\n  \"titulo\": \"Corte vial por manifestación en Reforma\",\n  \"descripcion\": \"Se reporta cierre total de Paseo de la Reforma desde el Ángel de la Independencia hasta la Diana Cazadora.\",\n  \"nivelSeveridad\": \"informativa\",\n  \"nivelCobertura\": \"zona_personalizada\",\n  \"estatus\": \"activa\",\n  \"fechaInicio\": \"2026-04-07T08:00:00.000Z\",\n  \"fechaFin\": \"2026-04-07T18:00:00.000Z\",\n  \"poligonoZona\": {\n    \"type\": \"Polygon\",\n    \"coordinates\": [[\n      [-99.1700, 19.4270],\n      [-99.1600, 19.4270],\n      [-99.1600, 19.4310],\n      [-99.1700, 19.4310],\n      [-99.1700, 19.4270]\n    ]]\n  },\n  \"mapaVisible\": true,\n  \"acciones\": [\n    \"Usar vías alternas\",\n    \"Consultar Google Maps en tiempo real\"\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/alertas",
+              "host": ["{{baseUrl}}"],
+              "path": ["alertas"]
+            }
+          }
+        },
+        {
+          "name": "Listar alertas",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/alertas?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["alertas"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "20" },
+                { "key": "estatus", "value": "activa", "disabled": true },
+                { "key": "nivelSeveridad", "value": "emergencia", "disabled": true },
+                { "key": "categoriaId", "value": "1", "disabled": true },
+                { "key": "busqueda", "value": "sismo", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Obtener alerta por ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/alertas/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["alertas", "1"]
+            }
+          }
+        },
+        {
+          "name": "Actualizar alerta",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"titulo\": \"Lluvia intensa en la CDMX (Actualizada)\",\n  \"descripcion\": \"Se actualizan las condiciones: lluvias de 70 a 90 mm. Alerta naranja.\",\n  \"nivelSeveridad\": \"emergencia\",\n  \"acciones\": [\n    \"Evacuar zonas inundables\",\n    \"Activar refugios temporales\",\n    \"No cruzar cauces de ríos\"\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/alertas/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["alertas", "1"]
+            }
+          }
+        },
+        {
+          "name": "Actualizar alerta (reemplazar zonas)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"zonas\": [\n    { \"zonaId\": 1 },\n    { \"zonaId\": 3 }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/alertas/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["alertas", "1"]
+            }
+          }
+        },
+        {
+          "name": "Eliminar alerta (soft-delete)",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/alertas/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["alertas", "1"]
+            }
+          }
+        },
+        {
+          "name": "Cambiar estatus",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estatus\": \"activa\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/alertas/1/estatus",
+              "host": ["{{baseUrl}}"],
+              "path": ["alertas", "1", "estatus"]
+            }
+          }
+        },
+        {
+          "name": "Crear actualización (historial)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mensaje\": \"Se intensifican las lluvias. Se amplía la zona de riesgo a 3 delegaciones más.\",\n  \"estatusNuevo\": \"activa\",\n  \"enviarPush\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/alertas/1/actualizaciones",
+              "host": ["{{baseUrl}}"],
+              "path": ["alertas", "1", "actualizaciones"]
+            }
+          }
+        },
+        {
+          "name": "Listar actualizaciones",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/alertas/1/actualizaciones",
+              "host": ["{{baseUrl}}"],
+              "path": ["alertas", "1", "actualizaciones"]
+            }
+          }
+        },
+        {
+          "name": "Agregar zona a alerta",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"zonaId\": 2\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/alertas/1/zonas",
+              "host": ["{{baseUrl}}"],
+              "path": ["alertas", "1", "zonas"]
+            }
+          }
+        },
+        {
+          "name": "Remover zona de alerta",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/alertas/1/zonas/2",
+              "host": ["{{baseUrl}}"],
+              "path": ["alertas", "1", "zonas", "2"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
