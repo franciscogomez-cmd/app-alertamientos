@@ -8,10 +8,8 @@ import {
   Patch,
   Post,
   Query,
-  UseGuards,
 } from '@nestjs/common';
 
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { UsuariosService } from './usuarios.service';
 import {
   CreateUsuarioDto,
@@ -32,25 +30,21 @@ export class UsuariosController {
     return this.usuariosService.create(dto);
   }
 
-  @UseGuards(JwtAuthGuard)
   @Get()
   findAll(@Query() query: QueryUsuariosDto) {
     return this.usuariosService.findAll(query);
   }
 
-  @UseGuards(JwtAuthGuard)
   @Get('by-device/:deviceId')
   findByDeviceId(@Param('deviceId') deviceId: string) {
     return this.usuariosService.findByDeviceId(deviceId);
   }
 
-  @UseGuards(JwtAuthGuard)
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.usuariosService.findOne(id);
   }
 
-  @UseGuards(JwtAuthGuard)
   @Patch(':id')
   update(
     @Param('id', ParseIntPipe) id: number,
@@ -59,7 +53,6 @@ export class UsuariosController {
     return this.usuariosService.update(id, dto);
   }
 
-  @UseGuards(JwtAuthGuard)
   @Delete(':id')
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.usuariosService.remove(id);
@@ -67,7 +60,6 @@ export class UsuariosController {
 
   // ─── Ubicación ─────────────────────────────────────────────────────────────
 
-  @UseGuards(JwtAuthGuard)
   @Patch(':id/ubicacion')
   updateUbicacion(
     @Param('id', ParseIntPipe) id: number,
@@ -78,7 +70,6 @@ export class UsuariosController {
 
   // ─── Preferencias ──────────────────────────────────────────────────────────
 
-  @UseGuards(JwtAuthGuard)
   @Patch(':id/preferencias')
   updatePreferencias(
     @Param('id', ParseIntPipe) id: number,
@@ -89,13 +80,11 @@ export class UsuariosController {
 
   // ─── Suscripciones a zonas ─────────────────────────────────────────────────
 
-  @UseGuards(JwtAuthGuard)
   @Get(':id/zonas')
   obtenerZonas(@Param('id', ParseIntPipe) id: number) {
     return this.usuariosService.obtenerZonasSuscritas(id);
   }
 
-  @UseGuards(JwtAuthGuard)
   @Post(':id/zonas')
   suscribirZona(
     @Param('id', ParseIntPipe) id: number,
@@ -104,7 +93,6 @@ export class UsuariosController {
     return this.usuariosService.suscribirZona(id, zonaId);
   }
 
-  @UseGuards(JwtAuthGuard)
   @Patch(':id/zonas/:zonaId/toggle')
   toggleZona(
     @Param('id', ParseIntPipe) id: number,
@@ -113,7 +101,6 @@ export class UsuariosController {
     return this.usuariosService.toggleZonaActiva(id, zonaId);
   }
 
-  @UseGuards(JwtAuthGuard)
   @Delete(':id/zonas/:zonaId')
   desuscribirZona(
     @Param('id', ParseIntPipe) id: number,
