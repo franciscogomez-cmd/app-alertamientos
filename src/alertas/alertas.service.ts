@@ -9,6 +9,7 @@ import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 
 import { DRIZZLE } from '../database/database.constants';
 import * as schema from '../database/schema';
+import { NotificacionesService } from '../notificaciones/notificaciones.service';
 import {
   CreateAlertaDto,
   UpdateAlertaDto,
@@ -20,7 +21,10 @@ type DrizzleDB = PostgresJsDatabase<typeof schema>;
 
 @Injectable()
 export class AlertasService {
-  constructor(@Inject(DRIZZLE) private readonly db: DrizzleDB) {}
+  constructor(
+    @Inject(DRIZZLE) private readonly db: DrizzleDB,
+    private readonly notificaciones: NotificacionesService,
+  ) {}
 
   // ═══════════════════════════════════════════════════════════════════════════
   // CREAR ALERTA
@@ -377,6 +381,14 @@ export class AlertasService {
       .set({ estatus: nuevoEstatus as any, actualizadoPor: adminId })
       .where(eq(schema.altAlertas.id, id));
 
+    // Enviar push cuando la alerta se activa
+    if (nuevoEstatus === 'activa') {
+      this.notificaciones.enviarPushAlerta(id).catch((err) => {
+        // No bloquear la respuesta por error de push
+        console.error(`Error enviando push para alerta ${id}:`, err);
+      });
+    }
+
     return this.findOne(id);
   }
 
@@ -402,6 +414,15 @@ export class AlertasService {
     // Actualizar estatus de la alerta si cambió
     if (dto.estatusNuevo !== alerta.estatus) {
       await this.cambiarEstatus(alertaId, dto.estatusNuevo, adminId);
+    }
+
+    // Enviar push si se solicitó
+    if (dto.enviarPush) {
+      this.notificaciones
+        .enviarPushActualizacion(alertaId, actualizacion.id, dto.mensaje)
+        .catch((err) => {
+          console.error(`Error enviando push de actualización ${actualizacion.id}:`, err);
+        });
     }
 
     return actualizacion;

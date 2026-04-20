@@ -23,6 +23,14 @@ export class EnvironmentVariables {
   @IsNumber()
   @IsOptional()
   PORT?: number = 5000;
+
+  @IsString()
+  @IsNotEmpty()
+  ONESIGNAL_APP_ID!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  ONESIGNAL_REST_API_KEY!: string;
 }
 
 export function validate(config: Record<string, unknown>): EnvironmentVariables {

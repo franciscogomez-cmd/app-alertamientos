@@ -7,6 +7,8 @@ import { AuthModule } from './auth/auth.module';
 import { AlertasModule } from './alertas/alertas.module';
 import { CategoriasModule } from './categorias/categorias.module';
 import { ZonasModule } from './zonas/zonas.module';
+import { UsuariosModule } from './usuarios/usuarios.module';
+import { NotificacionesModule } from './notificaciones/notificaciones.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
@@ -29,8 +31,10 @@ import { AppService } from './app.service';
     AlertasModule,
     CategoriasModule,
     ZonasModule,
+    UsuariosModule,
+    NotificacionesModule,
   ],
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule { }
