@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  DefaultValuePipe,
   Delete,
   Get,
   Param,
@@ -10,6 +11,7 @@ import {
   Query,
 } from '@nestjs/common';
 
+import { AlertasService } from '../alertas/alertas.service';
 import { UsuariosService } from './usuarios.service';
 import {
   CreateUsuarioDto,
@@ -21,7 +23,10 @@ import {
 
 @Controller('usuarios')
 export class UsuariosController {
-  constructor(private readonly usuariosService: UsuariosService) { }
+  constructor(
+    private readonly usuariosService: UsuariosService,
+    private readonly alertasService: AlertasService,
+  ) { }
 
   // ─── CRUD Básico ───────────────────────────────────────────────────────────
 
@@ -56,6 +61,26 @@ export class UsuariosController {
   @Delete(':id')
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.usuariosService.remove(id);
+  }
+
+  // ─── Alertas aplicables al dispositivo ────────────────────────────────────
+
+  @Get(':id/alertas')
+  findAlertasByUsuario(
+    @Param('id', ParseIntPipe) id: number,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
+  ) {
+    return this.alertasService.findAlertasByUsuario(id, page, limit);
+  }
+
+  @Get(':id/alertas/recientes')
+  findUltimasAlertasByUsuario(
+    @Param('id', ParseIntPipe) id: number,
+    @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
+    @Query('horas', new DefaultValuePipe(0), ParseIntPipe) horas: number,
+  ) {
+    return this.alertasService.findUltimasAlertasByUsuario(id, limit, horas || undefined);
   }
 
   // ─── Ubicación ─────────────────────────────────────────────────────────────

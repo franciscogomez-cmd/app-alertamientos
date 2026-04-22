@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { and, count, desc, eq, ilike, inArray, isNull, or, SQL } from 'drizzle-orm';
+import { and, count, desc, eq, gte, ilike, inArray, isNull, or, SQL } from 'drizzle-orm';
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 
 import { DRIZZLE } from '../database/database.constants';
@@ -494,5 +494,206 @@ export class AlertasService {
     }
 
     return { message: `Zona ${zonaId} removida de la alerta ${alertaId}.` };
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ALERTAS APLICABLES A UN DISPOSITIVO/USUARIO (historial paginado)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  async findAlertasByUsuario(usuarioId: number, page = 1, limit = 20) {
+    const filtradas = await this._filtrarParaUsuario(usuarioId);
+
+    const total = filtradas.length;
+    const offset = (page - 1) * limit;
+    const paginadas = filtradas.slice(offset, offset + limit);
+
+    const data = await this._enriquecerConCategoria(paginadas);
+
+    return {
+      data,
+      meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
+    };
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ÚLTIMAS ALERTAS PARA UN DISPOSITIVO/USUARIO
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /**
+   * Retorna las alertas más recientes que aplican al usuario.
+   * Aplica los mismos criterios geográficos/severidad que findAlertasByUsuario.
+   *
+   * @param usuarioId  ID del usuario/dispositivo
+   * @param limit      Máximo de alertas a retornar (default 10)
+   * @param horas      Si se indica, solo devuelve alertas cuyo fechaInicio
+   *                   sea dentro de las últimas N horas (default: sin límite)
+   */
+  async findUltimasAlertasByUsuario(usuarioId: number, limit = 10, horas?: number) {
+    const filtradas = await this._filtrarParaUsuario(usuarioId, horas);
+    const recientes = filtradas.slice(0, limit);
+    const data = await this._enriquecerConCategoria(recientes);
+    return { data, total: filtradas.length };
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // HELPER PRIVADO: obtiene y filtra alertas que aplican al usuario
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  private async _filtrarParaUsuario(usuarioId: number, horas?: number) {
+    // 1. Obtener usuario
+    const [usuario] = await this.db
+      .select()
+      .from(schema.altUsuarios)
+      .where(and(eq(schema.altUsuarios.id, usuarioId), isNull(schema.altUsuarios.eliminadoEn)));
+
+    if (!usuario) {
+      throw new NotFoundException(`Usuario con id ${usuarioId} no encontrado.`);
+    }
+
+    // 2. Zonas suscritas activas del usuario
+    const zonasUsuario = await this.db
+      .select({ zonaId: schema.altUsuariosZonas.zonaId })
+      .from(schema.altUsuariosZonas)
+      .where(
+        and(
+          eq(schema.altUsuariosZonas.usuarioId, usuarioId),
+          eq(schema.altUsuariosZonas.activo, true),
+          isNull(schema.altUsuariosZonas.eliminadoEn),
+        ),
+      );
+    const zonaIdsUsuario = new Set(zonasUsuario.map((z) => z.zonaId));
+
+    // 3. Severidades permitidas
+    const severidadesMap: Record<string, string[]> = {
+      informativa: ['informativa', 'preventiva', 'emergencia'],
+      preventiva: ['preventiva', 'emergencia'],
+      emergencia: ['emergencia'],
+    };
+    const severidadesPermitidas = severidadesMap[usuario.severidadMinima ?? 'informativa'];
+
+    // 4. Condiciones base de la query
+    const conditions: SQL[] = [
+      eq(schema.altAlertas.estatus, 'activa' as any),
+      isNull(schema.altAlertas.eliminadoEn),
+      inArray(schema.altAlertas.nivelSeveridad, severidadesPermitidas as any[]),
+    ];
+
+    // 4a. Filtro de ventana de tiempo si se indica
+    if (horas != null && horas > 0) {
+      const desde = new Date(Date.now() - horas * 60 * 60 * 1000);
+      conditions.push(gte(schema.altAlertas.fechaInicio, desde));
+    }
+
+    // 5. Alertas activas
+    const alertas = await this.db
+      .select()
+      .from(schema.altAlertas)
+      .where(and(...conditions))
+      .orderBy(desc(schema.altAlertas.creadoEn));
+
+    if (alertas.length === 0) return [];
+
+    // 6. Zonas N:M de esas alertas
+    const alertaIds = alertas.map((a) => a.id);
+    const alertasZonas = await this.db
+      .select({ alertaId: schema.altAlertasZonas.alertaId, zonaId: schema.altAlertasZonas.zonaId })
+      .from(schema.altAlertasZonas)
+      .where(
+        and(
+          inArray(schema.altAlertasZonas.alertaId, alertaIds),
+          isNull(schema.altAlertasZonas.eliminadoEn),
+        ),
+      );
+
+    const zonasDeAlertas = new Map<number, number[]>();
+    for (const az of alertasZonas) {
+      const lista = zonasDeAlertas.get(az.alertaId) ?? [];
+      lista.push(az.zonaId);
+      zonasDeAlertas.set(az.alertaId, lista);
+    }
+
+    // 7. Zonas que comparten el CP del usuario
+    const zonaIdsConCp = new Set<number>();
+    if (usuario.codigoPostal) {
+      const zonasCp = await this.db
+        .select({ id: schema.catZonasGeograficas.id })
+        .from(schema.catZonasGeograficas)
+        .where(
+          and(
+            eq(schema.catZonasGeograficas.codigoPostal, usuario.codigoPostal),
+            isNull(schema.catZonasGeograficas.eliminadoEn),
+          ),
+        );
+      zonasCp.forEach((z) => zonaIdsConCp.add(z.id));
+    }
+
+    // 8. Coordenadas GPS del usuario
+    const userLat = usuario.latitud ? parseFloat(usuario.latitud) : null;
+    const userLon = usuario.longitud ? parseFloat(usuario.longitud) : null;
+
+    // 9. Filtro geográfico
+    return alertas.filter((alerta) => {
+      if (alerta.nivelCobertura === 'pais') return true;
+      if (alerta.zonaId != null && zonaIdsUsuario.has(alerta.zonaId)) return true;
+      if (alerta.zonaId != null && zonaIdsConCp.has(alerta.zonaId)) return true;
+
+      const zonasAlerta = zonasDeAlertas.get(alerta.id) ?? [];
+      if (zonasAlerta.some((z) => zonaIdsUsuario.has(z))) return true;
+      if (zonasAlerta.some((z) => zonaIdsConCp.has(z))) return true;
+
+      if (
+        userLat !== null &&
+        userLon !== null &&
+        alerta.centroLatitud &&
+        alerta.centroLongitud &&
+        alerta.radioKm
+      ) {
+        const dist = this.haversineKm(
+          userLat, userLon,
+          parseFloat(alerta.centroLatitud),
+          parseFloat(alerta.centroLongitud),
+        );
+        if (dist <= parseFloat(alerta.radioKm)) return true;
+      }
+
+      return false;
+    });
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // HELPER PRIVADO: enriquece alertas con su categoría
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  private async _enriquecerConCategoria(alertas: (typeof schema.altAlertas.$inferSelect)[]) {
+    return Promise.all(
+      alertas.map(async (alerta) => {
+        const [categoria] = await this.db
+          .select({
+            id: schema.catCategoriasAlerta.id,
+            nombre: schema.catCategoriasAlerta.nombre,
+            colorHex: schema.catCategoriasAlerta.colorHex,
+            icono: schema.catCategoriasAlerta.icono,
+          })
+          .from(schema.catCategoriasAlerta)
+          .where(eq(schema.catCategoriasAlerta.id, alerta.categoriaId))
+          .limit(1);
+        return { ...alerta, categoria };
+      }),
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // UTILIDAD PRIVADA: distancia Haversine entre dos coordenadas (km)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  private haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    const R = 6371;
+    const toRad = (deg: number) => (deg * Math.PI) / 180;
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lon2 - lon1);
+    const a =
+      Math.sin(dLat / 2) ** 2 +
+      Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   }
 }
