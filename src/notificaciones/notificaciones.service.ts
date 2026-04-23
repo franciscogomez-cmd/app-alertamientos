@@ -83,8 +83,14 @@ export class NotificacionesService {
     const emoji = severidadEmoji[alerta.nivelSeveridad] ?? '📢';
     const categoriaNombre = categoria?.nombre ?? 'Alerta';
 
-    const headings = { es: `${emoji} ${categoriaNombre}` };
-    const contents = { es: alerta.titulo };
+    const headings = {
+      en: `${emoji} ${categoriaNombre}`,
+      es: `${emoji} ${categoriaNombre}`
+    };
+    const contents = {
+      en: alerta.titulo,
+      es: alerta.titulo
+    };
     const data = {
       alertaId: alerta.id,
       nivelSeveridad: alerta.nivelSeveridad,
@@ -129,19 +135,20 @@ export class NotificacionesService {
     );
 
     // Actualizar contador de la alerta
+    const recipients = onesignalResponse.recipients ?? usuariosConToken.length;
     await this.db
       .update(schema.altAlertas)
       .set({
-        totalEnviadas: (alerta.totalEnviadas ?? 0) + onesignalResponse.recipients,
+        totalEnviadas: (alerta.totalEnviadas ?? 0) + recipients,
       })
       .where(eq(schema.altAlertas.id, alertaId));
 
     this.logger.log(
-      `Push enviado para alerta ${alertaId}: ${onesignalResponse.recipients} destinatarios`,
+      `Push enviado para alerta ${alertaId}: ${recipients} destinatarios`,
     );
 
     return {
-      enviadas: onesignalResponse.recipients,
+      enviadas: recipients,
       onesignalId: onesignalResponse.id,
     };
   }
@@ -182,8 +189,14 @@ export class NotificacionesService {
     try {
       const response = await this.onesignal.sendToSubscriptionIds(
         subscriptionIds,
-        { es: `📢 Actualización: ${alerta.titulo}` },
-        { es: mensaje },
+        {
+          en: `📢 Update: ${alerta.titulo}`,
+          es: `📢 Actualización: ${alerta.titulo}`
+        },
+        {
+          en: mensaje,
+          es: mensaje
+        },
         { alertaId, actualizacionId },
       );
 
@@ -196,7 +209,8 @@ export class NotificacionesService {
         null,
       );
 
-      return { enviadas: response.recipients, onesignalId: response.id };
+      const recipients = response.recipients ?? usuariosConToken.length;
+      return { enviadas: recipients, onesignalId: response.id };
     } catch (error) {
       await this.registrarEnvios(
         alertaId,

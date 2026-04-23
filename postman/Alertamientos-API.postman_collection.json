@@ -1,0 +1,605 @@
+{
+  "info": {
+    "name": "Alertamientos API",
+    "description": "Colección completa de la API de Alertamientos — NestJS + Drizzle ORM + PostgreSQL + OneSignal",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000/api"
+    },
+    {
+      "key": "token",
+      "value": ""
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.accessToken) {",
+                  "  pm.collectionVariables.set('token', res.accessToken);",
+                  "  console.log('Token guardado automáticamente');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin-alertamientos@sigob.com.mx\",\n  \"password\": \"Admin2026!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Get Profile",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/auth/profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "profile"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Categorías",
+      "item": [
+        {
+          "name": "Crear categoría",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Meteorológica\",\n  \"slug\": \"meteorologica\",\n  \"icono\": \"cloud-rain\",\n  \"colorHex\": \"#3B82F6\",\n  \"descripcion\": \"Alertas relacionadas con fenómenos meteorológicos\",\n  \"activo\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/categorias",
+              "host": ["{{baseUrl}}"],
+              "path": ["categorias"]
+            }
+          }
+        },
+        {
+          "name": "Listar categorías",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/categorias?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["categorias"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "20" },
+                { "key": "busqueda", "value": "", "disabled": true },
+                { "key": "activo", "value": "true", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Obtener categoría por ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/categorias/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["categorias", "1"]
+            }
+          }
+        },
+        {
+          "name": "Actualizar categoría",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Meteorológica (Actualizada)\",\n  \"colorHex\": \"#2563EB\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/categorias/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["categorias", "1"]
+            }
+          }
+        },
+        {
+          "name": "Toggle activo categoría",
+          "request": {
+            "method": "PATCH",
+            "url": {
+              "raw": "{{baseUrl}}/categorias/1/toggle-activo",
+              "host": ["{{baseUrl}}"],
+              "path": ["categorias", "1", "toggle-activo"]
+            }
+          }
+        },
+        {
+          "name": "Eliminar categoría",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/categorias/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["categorias", "1"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Zonas Geográficas",
+      "item": [
+        {
+          "name": "Crear zona (estado)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Ciudad de México\",\n  \"tipo\": \"estado\",\n  \"clavePais\": \"MX\",\n  \"claveEstado\": \"09\",\n  \"centroLatitud\": 19.4326077,\n  \"centroLongitud\": -99.133208,\n  \"radioKm\": 25.5,\n  \"activo\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/zonas",
+              "host": ["{{baseUrl}}"],
+              "path": ["zonas"]
+            }
+          }
+        },
+        {
+          "name": "Listar zonas",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/zonas?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["zonas"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "20" },
+                { "key": "busqueda", "value": "", "disabled": true },
+                { "key": "tipo", "value": "estado", "disabled": true },
+                { "key": "claveEstado", "value": "09", "disabled": true },
+                { "key": "activo", "value": "true", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Obtener zona por ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/zonas/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["zonas", "1"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Alertas",
+      "item": [
+        {
+          "name": "Crear alerta (básica)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"categoriaId\": 1,\n  \"titulo\": \"Lluvia intensa en la CDMX\",\n  \"descripcion\": \"Se esperan lluvias de 50 a 70 mm en las próximas 6 horas. Se recomienda evitar zonas bajas y cauces de ríos.\",\n  \"nivelSeveridad\": \"preventiva\",\n  \"nivelCobertura\": \"estado\",\n  \"estatus\": \"borrador\",\n  \"fechaInicio\": \"2026-04-23T14:00:00.000Z\",\n  \"fechaFin\": \"2026-04-23T20:00:00.000Z\",\n  \"centroLatitud\": 19.4326077,\n  \"centroLongitud\": -99.133208,\n  \"radioKm\": 25.5,\n  \"acciones\": [\n    \"Evitar zonas bajas\",\n    \"No cruzar cauces de ríos\",\n    \"Tener a la mano documentos importantes\"\n  ],\n  \"mapaVisible\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/alertas",
+              "host": ["{{baseUrl}}"],
+              "path": ["alertas"]
+            }
+          }
+        },
+        {
+          "name": "Listar alertas",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/alertas?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["alertas"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "20" },
+                { "key": "estatus", "value": "activa", "disabled": true },
+                { "key": "nivelSeveridad", "value": "emergencia", "disabled": true },
+                { "key": "categoriaId", "value": "1", "disabled": true },
+                { "key": "busqueda", "value": "sismo", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Obtener alerta por ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/alertas/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["alertas", "1"]
+            }
+          }
+        },
+        {
+          "name": "Actualizar alerta",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"titulo\": \"Lluvia intensa en la CDMX (Actualizada)\",\n  \"descripcion\": \"Se actualizan las condiciones: lluvias de 70 a 90 mm. Alerta naranja.\",\n  \"nivelSeveridad\": \"emergencia\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/alertas/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["alertas", "1"]
+            }
+          }
+        },
+        {
+          "name": "Cambiar estatus",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estatus\": \"activa\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/alertas/1/estatus",
+              "host": ["{{baseUrl}}"],
+              "path": ["alertas", "1", "estatus"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Usuarios",
+      "description": "Gestión de usuarios móviles. POST /usuarios (registro) es público, el resto requiere JWT.",
+      "item": [
+        {
+          "name": "Registrar usuario (público)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"deviceId\": \"abc123-device-001\",\n  \"plataforma\": \"android\",\n  \"tokenPush\": \"onesignal-subscription-id-aqui\",\n  \"versionApp\": \"1.0.0\",\n  \"modeloDispositivo\": \"Samsung Galaxy S21\",\n  \"sistemaOperativo\": \"Android 13\",\n  \"latitud\": 19.4326077,\n  \"longitud\": -99.133208,\n  \"codigoPostal\": \"06600\",\n  \"notifActivas\": true,\n  \"gpsActivo\": true,\n  \"severidadMinima\": \"informativa\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/usuarios",
+              "host": ["{{baseUrl}}"],
+              "path": ["usuarios"]
+            }
+          }
+        },
+        {
+          "name": "Listar usuarios",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/usuarios?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["usuarios"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "20" },
+                { "key": "plataforma", "value": "android", "disabled": true },
+                { "key": "busqueda", "value": "", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Obtener usuario por ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/usuarios/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["usuarios", "1"]
+            }
+          }
+        },
+        {
+          "name": "Buscar por Device ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/usuarios/by-device/abc123-device-001",
+              "host": ["{{baseUrl}}"],
+              "path": ["usuarios", "by-device", "abc123-device-001"]
+            }
+          }
+        },
+        {
+          "name": "Actualizar usuario",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tokenPush\": \"nuevo-subscription-id\",\n  \"versionApp\": \"1.0.1\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/usuarios/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["usuarios", "1"]
+            }
+          }
+        },
+        {
+          "name": "Actualizar ubicación",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"latitud\": 19.3718,\n  \"longitud\": -99.1583,\n  \"precisionMetros\": 10.5\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/usuarios/1/ubicacion",
+              "host": ["{{baseUrl}}"],
+              "path": ["usuarios", "1", "ubicacion"]
+            }
+          }
+        },
+        {
+          "name": "Actualizar preferencias",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"notifActivas\": true,\n  \"severidadMinima\": \"preventiva\",\n  \"notifMeteorologicas\": true,\n  \"notifUltimaHora\": true,\n  \"notifVialidad\": false\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/usuarios/1/preferencias",
+              "host": ["{{baseUrl}}"],
+              "path": ["usuarios", "1", "preferencias"]
+            }
+          }
+        },
+        {
+          "name": "Obtener alertas del usuario (paginadas)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/usuarios/1/alertas?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["usuarios", "1", "alertas"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "20" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Obtener últimas alertas del usuario",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/usuarios/1/alertas/recientes?limit=10&horas=24",
+              "host": ["{{baseUrl}}"],
+              "path": ["usuarios", "1", "alertas", "recientes"],
+              "query": [
+                { "key": "limit", "value": "10" },
+                { "key": "horas", "value": "24", "disabled": true }
+              ]
+            }
+          }
+        },
+        {
+          "name": "⭐ Obtener última alerta del usuario",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/usuarios/1/alertas/ultimo",
+              "host": ["{{baseUrl}}"],
+              "path": ["usuarios", "1", "alertas", "ultimo"]
+            }
+          }
+        },
+        {
+          "name": "⭐ Obtener notificaciones del usuario",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/usuarios/1/notificaciones?page=1&limit=20&soloNoLeidas=true",
+              "host": ["{{baseUrl}}"],
+              "path": ["usuarios", "1", "notificaciones"],
+              "query": [
+                { "key": "page", "value": "1", "description": "Número de página (default: 1)" },
+                { "key": "limit", "value": "20", "description": "Items por página (default: 20)" },
+                { "key": "estatus", "value": "enviada", "disabled": true, "description": "Filtrar por: pendiente | enviada | fallida | rebotada" },
+                { "key": "soloLeidas", "value": "true", "disabled": true, "description": "Solo notificaciones leídas" },
+                { "key": "soloNoLeidas", "value": "true", "description": "Solo notificaciones NO leídas" },
+                { "key": "alertaId", "value": "42", "disabled": true, "description": "Filtrar por alerta específica" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "⭐ Marcar notificación como leída",
+          "request": {
+            "method": "PATCH",
+            "url": {
+              "raw": "{{baseUrl}}/usuarios/1/notificaciones/1/marcar-leida",
+              "host": ["{{baseUrl}}"],
+              "path": ["usuarios", "1", "notificaciones", "1", "marcar-leida"]
+            }
+          }
+        },
+        {
+          "name": "Obtener zonas suscritas",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/usuarios/1/zonas",
+              "host": ["{{baseUrl}}"],
+              "path": ["usuarios", "1", "zonas"]
+            }
+          }
+        },
+        {
+          "name": "Suscribir a zona",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"zonaId\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/usuarios/1/zonas",
+              "host": ["{{baseUrl}}"],
+              "path": ["usuarios", "1", "zonas"]
+            }
+          }
+        },
+        {
+          "name": "Eliminar usuario (soft-delete)",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/usuarios/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["usuarios", "1"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Notificaciones Push",
+      "description": "Endpoints de prueba OneSignal y consulta de historial/estadísticas de push enviados.",
+      "item": [
+        {
+          "name": "Test: Broadcast a todos",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"titulo\": \"🔔 Prueba de Alertamientos\",\n  \"mensaje\": \"Esta es una notificación de prueba enviada desde el backend.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/notificaciones/test/broadcast",
+              "host": ["{{baseUrl}}"],
+              "path": ["notificaciones", "test", "broadcast"]
+            }
+          }
+        },
+        {
+          "name": "Test: Push a dispositivo específico",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"subscriptionId\": \"PEGAR_SUBSCRIPTION_ID_DE_ONESIGNAL\",\n  \"titulo\": \"🔔 Prueba directa\",\n  \"mensaje\": \"Push de prueba enviado a tu dispositivo.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/notificaciones/test/device",
+              "host": ["{{baseUrl}}"],
+              "path": ["notificaciones", "test", "device"]
+            }
+          }
+        },
+        {
+          "name": "Historial de notificaciones de alerta",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/notificaciones/alerta/1/historial",
+              "host": ["{{baseUrl}}"],
+              "path": ["notificaciones", "alerta", "1", "historial"]
+            }
+          }
+        },
+        {
+          "name": "Estadísticas de envío de alerta",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/notificaciones/alerta/1/estadisticas",
+              "host": ["{{baseUrl}}"],
+              "path": ["notificaciones", "alerta", "1", "estadisticas"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
