@@ -535,6 +535,25 @@ export class AlertasService {
     return { data, total: filtradas.length };
   }
 
+  /**
+   * Retorna la última alerta activa que aplica al usuario.
+   * Si no hay alertas aplicables, retorna null.
+   *
+   * @param usuarioId  ID del usuario/dispositivo
+   */
+  async findUltimaAlertaByUsuario(usuarioId: number) {
+    const filtradas = await this._filtrarParaUsuario(usuarioId);
+
+    if (filtradas.length === 0) {
+      return null;
+    }
+
+    const [ultima] = filtradas; // Ya viene ordenado por creadoEn desc
+    const [enriquecida] = await this._enriquecerConCategoria([ultima]);
+
+    return enriquecida;
+  }
+
   // ═══════════════════════════════════════════════════════════════════════════
   // HELPER PRIVADO: obtiene y filtra alertas que aplican al usuario
   // ═══════════════════════════════════════════════════════════════════════════

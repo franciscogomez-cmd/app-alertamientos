@@ -6,7 +6,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { and, count, desc, eq, ilike, inArray, isNull, or, SQL } from 'drizzle-orm';
+import { and, count, desc, eq, ilike, inArray, isNotNull, isNull, or, SQL } from 'drizzle-orm';
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 
 import { DRIZZLE } from '../database/database.constants';
@@ -18,6 +18,7 @@ import {
   QueryUsuariosDto,
   UpdateUbicacionDto,
   UpdatePreferenciasDto,
+  QueryNotificacionesUsuarioDto,
 } from './dto';
 
 type DrizzleDB = PostgresJsDatabase<typeof schema>;
@@ -544,5 +545,128 @@ export class UsuariosService {
       zonas: zonaIds || '',
       totalZonas: zonas.length.toString(),
     });
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // NOTIFICACIONES DEL USUARIO
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /**
+   * Obtiene las notificaciones recibidas por un usuario con filtros y paginación.
+   * Incluye información de la alerta y categoría asociadas.
+   */
+  async obtenerNotificaciones(usuarioId: number, query: QueryNotificacionesUsuarioDto) {
+    await this.findOne(usuarioId);
+
+    const { page = 1, limit = 20, estatus, soloLeidas, soloNoLeidas, alertaId } = query;
+    const offset = (page - 1) * limit;
+
+    const conditions: SQL[] = [eq(schema.altNotificacionesEnviadas.usuarioId, usuarioId)];
+
+    if (estatus) {
+      conditions.push(eq(schema.altNotificacionesEnviadas.estatusEnvio, estatus as any));
+    }
+
+    if (soloLeidas) {
+      conditions.push(isNotNull(schema.altNotificacionesEnviadas.leidaEn));
+    }
+
+    if (soloNoLeidas) {
+      conditions.push(isNull(schema.altNotificacionesEnviadas.leidaEn));
+    }
+
+    if (alertaId) {
+      conditions.push(eq(schema.altNotificacionesEnviadas.alertaId, alertaId));
+    }
+
+    const where = and(...conditions);
+
+    // Contar total
+    const [{ total }] = await this.db
+      .select({ total: count() })
+      .from(schema.altNotificacionesEnviadas)
+      .where(where);
+
+    // Obtener notificaciones con información de alerta y categoría
+    const data = await this.db
+      .select({
+        // Campos de la notificación
+        id: schema.altNotificacionesEnviadas.id,
+        alertaId: schema.altNotificacionesEnviadas.alertaId,
+        actualizacionId: schema.altNotificacionesEnviadas.actualizacionId,
+        estatusEnvio: schema.altNotificacionesEnviadas.estatusEnvio,
+        intentoNumero: schema.altNotificacionesEnviadas.intentoNumero,
+        mensajeError: schema.altNotificacionesEnviadas.mensajeError,
+        enviadaEn: schema.altNotificacionesEnviadas.enviadaEn,
+        leidaEn: schema.altNotificacionesEnviadas.leidaEn,
+        creadoEn: schema.altNotificacionesEnviadas.creadoEn,
+        // Información de la alerta
+        alertaTitulo: schema.altAlertas.titulo,
+        alertaDescripcion: schema.altAlertas.descripcion,
+        alertaNivelSeveridad: schema.altAlertas.nivelSeveridad,
+        alertaEstatus: schema.altAlertas.estatus,
+        alertaImagenUrl: schema.altAlertas.imagenUrl,
+        alertaFechaInicio: schema.altAlertas.fechaInicio,
+        alertaFechaFin: schema.altAlertas.fechaFin,
+        // Información de la categoría
+        categoriaNombre: schema.catCategoriasAlerta.nombre,
+        categoriaIcono: schema.catCategoriasAlerta.icono,
+      })
+      .from(schema.altNotificacionesEnviadas)
+      .innerJoin(
+        schema.altAlertas,
+        eq(schema.altNotificacionesEnviadas.alertaId, schema.altAlertas.id),
+      )
+      .innerJoin(
+        schema.catCategoriasAlerta,
+        eq(schema.altAlertas.categoriaId, schema.catCategoriasAlerta.id),
+      )
+      .where(where)
+      .orderBy(desc(schema.altNotificacionesEnviadas.creadoEn))
+      .limit(limit)
+      .offset(offset);
+
+    return {
+      data,
+      meta: { total, page, limit, totalPages: Math.ceil(total / limit) },
+    };
+  }
+
+  /**
+   * Marca una notificación como leída.
+   * Solo puede marcar notificaciones del propio usuario.
+   */
+  async marcarNotificacionLeida(usuarioId: number, notificacionId: number) {
+    await this.findOne(usuarioId);
+
+    // Verificar que la notificación pertenece al usuario
+    const [notificacion] = await this.db
+      .select()
+      .from(schema.altNotificacionesEnviadas)
+      .where(eq(schema.altNotificacionesEnviadas.id, notificacionId));
+
+    if (!notificacion) {
+      throw new NotFoundException(`Notificación con id ${notificacionId} no encontrada.`);
+    }
+
+    if (notificacion.usuarioId !== usuarioId) {
+      throw new BadRequestException(
+        `La notificación ${notificacionId} no pertenece al usuario ${usuarioId}.`,
+      );
+    }
+
+    if (notificacion.leidaEn) {
+      // Ya estaba leída, retornar sin cambios
+      return notificacion;
+    }
+
+    // Marcar como leída
+    const [updated] = await this.db
+      .update(schema.altNotificacionesEnviadas)
+      .set({ leidaEn: new Date() })
+      .where(eq(schema.altNotificacionesEnviadas.id, notificacionId))
+      .returning();
+
+    return updated;
   }
 }

@@ -19,6 +19,7 @@ import {
   QueryUsuariosDto,
   UpdateUbicacionDto,
   UpdatePreferenciasDto,
+  QueryNotificacionesUsuarioDto,
 } from './dto';
 
 @Controller('usuarios')
@@ -83,6 +84,11 @@ export class UsuariosController {
     return this.alertasService.findUltimasAlertasByUsuario(id, limit, horas || undefined);
   }
 
+  @Get(':id/alertas/ultimo')
+  findUltimaAlertaByUsuario(@Param('id', ParseIntPipe) id: number) {
+    return this.alertasService.findUltimaAlertaByUsuario(id);
+  }
+
   // ─── Ubicación ─────────────────────────────────────────────────────────────
 
   @Patch(':id/ubicacion')
@@ -132,5 +138,23 @@ export class UsuariosController {
     @Param('zonaId', ParseIntPipe) zonaId: number,
   ) {
     return this.usuariosService.desuscribirZona(id, zonaId);
+  }
+
+  // ─── Notificaciones del usuario ────────────────────────────────────────────
+
+  @Get(':id/notificaciones')
+  obtenerNotificaciones(
+    @Param('id', ParseIntPipe) id: number,
+    @Query() query: QueryNotificacionesUsuarioDto,
+  ) {
+    return this.usuariosService.obtenerNotificaciones(id, query);
+  }
+
+  @Patch(':id/notificaciones/:notifId/marcar-leida')
+  marcarNotificacionLeida(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('notifId', ParseIntPipe) notifId: number,
+  ) {
+    return this.usuariosService.marcarNotificacionLeida(id, notifId);
   }
 }
