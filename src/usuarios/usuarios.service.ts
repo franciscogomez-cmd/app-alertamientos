@@ -608,6 +608,9 @@ export class UsuariosService {
         alertaImagenUrl: schema.altAlertas.imagenUrl,
         alertaFechaInicio: schema.altAlertas.fechaInicio,
         alertaFechaFin: schema.altAlertas.fechaFin,
+        alertaCentroLatitud: schema.altAlertas.centroLatitud,
+        alertaCentroLongitud: schema.altAlertas.centroLongitud,
+        alertaRadioKm: schema.altAlertas.radioKm,
         // Información de la categoría
         categoriaNombre: schema.catCategoriasAlerta.nombre,
         categoriaIcono: schema.catCategoriasAlerta.icono,
