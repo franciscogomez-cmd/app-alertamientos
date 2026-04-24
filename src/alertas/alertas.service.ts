@@ -537,7 +537,7 @@ export class AlertasService {
 
   /**
    * Retorna la última alerta activa que aplica al usuario.
-   * Si no hay alertas aplicables, retorna null.
+   * Si no hay alertas aplicables, retorna { data: null, message: ... }.
    *
    * @param usuarioId  ID del usuario/dispositivo
    */
@@ -545,13 +545,16 @@ export class AlertasService {
     const filtradas = await this._filtrarParaUsuario(usuarioId);
 
     if (filtradas.length === 0) {
-      return null;
+      return {
+        data: null,
+        message: 'No hay alertas activas para este usuario'
+      };
     }
 
     const [ultima] = filtradas; // Ya viene ordenado por creadoEn desc
     const [enriquecida] = await this._enriquecerConCategoria([ultima]);
 
-    return enriquecida;
+    return { data: enriquecida };
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
