@@ -22,7 +22,6 @@ import {
 } from './dto';
 
 @Controller('alertas')
-@UseGuards(JwtAuthGuard)
 export class AlertasController {
   constructor(private readonly alertasService: AlertasService) {}
 
@@ -31,21 +30,25 @@ export class AlertasController {
   // ═══════════════════════════════════════════════════════════════════════════
 
   @Post()
+  @UseGuards(JwtAuthGuard)
   create(@Body() dto: CreateAlertaDto, @CurrentAdmin() admin: any) {
     return this.alertasService.create(dto, admin.id);
   }
 
   @Get()
+  @UseGuards(JwtAuthGuard)
   findAll(@Query() query: QueryAlertasDto) {
     return this.alertasService.findAll(query);
   }
 
   @Get(':id')
+  @UseGuards(JwtAuthGuard)
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.alertasService.findOne(id);
   }
 
   @Patch(':id')
+  @UseGuards(JwtAuthGuard)
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateAlertaDto,
@@ -55,6 +58,7 @@ export class AlertasController {
   }
 
   @Delete(':id')
+  @UseGuards(JwtAuthGuard)
   remove(@Param('id', ParseIntPipe) id: number, @CurrentAdmin() admin: any) {
     return this.alertasService.remove(id, admin.id);
   }
@@ -64,6 +68,7 @@ export class AlertasController {
   // ═══════════════════════════════════════════════════════════════════════════
 
   @Patch(':id/estatus')
+  @UseGuards(JwtAuthGuard)
   cambiarEstatus(
     @Param('id', ParseIntPipe) id: number,
     @Body('estatus') estatus: string,
@@ -77,6 +82,7 @@ export class AlertasController {
   // ═══════════════════════════════════════════════════════════════════════════
 
   @Post(':id/actualizaciones')
+  @UseGuards(JwtAuthGuard)
   crearActualizacion(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: CreateActualizacionDto,
@@ -95,6 +101,7 @@ export class AlertasController {
   // ═══════════════════════════════════════════════════════════════════════════
 
   @Post(':id/zonas')
+  @UseGuards(JwtAuthGuard)
   agregarZona(
     @Param('id', ParseIntPipe) id: number,
     @Body('zonaId', ParseIntPipe) zonaId: number,
@@ -104,6 +111,7 @@ export class AlertasController {
   }
 
   @Delete(':id/zonas/:zonaId')
+  @UseGuards(JwtAuthGuard)
   removerZona(
     @Param('id', ParseIntPipe) id: number,
     @Param('zonaId', ParseIntPipe) zonaId: number,
