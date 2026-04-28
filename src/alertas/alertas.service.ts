@@ -554,7 +554,7 @@ export class AlertasService {
     const [ultima] = filtradas; // Ya viene ordenado por creadoEn desc
     const [enriquecida] = await this._enriquecerConCategoria([ultima]);
 
-    return { data: enriquecida };
+    return { data: enriquecida, message: null };
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
