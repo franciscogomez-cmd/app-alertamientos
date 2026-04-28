@@ -1,5 +1,5 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { and, eq, isNull } from 'drizzle-orm';
+import { and, eq, inArray, isNotNull, isNull, sql } from 'drizzle-orm';
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 
 import { DRIZZLE } from '../database/database.constants';
@@ -8,15 +8,27 @@ import { OnesignalService } from './onesignal.service';
 
 type DrizzleDB = PostgresJsDatabase<typeof schema>;
 
-/**
- * Servicio de notificaciones push para alertas.
- *
- * Flujo:
- * 1. Recibe una alerta (o actualización)
- * 2. Obtiene los usuarios con push activo y tokenPush registrado
- * 3. Envía el push via OneSignal
- * 4. Registra cada envío en alt_notificaciones_enviadas
- */
+type UsuarioAfectado = {
+  id: number;
+  tokenPush: string | null;
+  latitud: string | null;
+  longitud: string | null;
+};
+
+// Ray-casting algorithm — GeoJSON coordinates are [lon, lat]
+function puntoDentroDePoligono(lat: number, lon: number, geojson: any): boolean {
+  const anillo = geojson?.coordinates?.[0] as [number, number][] | undefined;
+  if (!anillo?.length) return false;
+  let dentro = false;
+  for (let i = 0, j = anillo.length - 1; i < anillo.length; j = i++) {
+    const [xi, yi] = anillo[i]; // xi=lon, yi=lat
+    const [xj, yj] = anillo[j];
+    const cruza = (yi > lat) !== (yj > lat) && lon < ((xj - xi) * (lat - yi)) / (yj - yi) + xi;
+    if (cruza) dentro = !dentro;
+  }
+  return dentro;
+}
+
 @Injectable()
 export class NotificacionesService {
   private readonly logger = new Logger(NotificacionesService.name);
@@ -31,7 +43,6 @@ export class NotificacionesService {
   // ═══════════════════════════════════════════════════════════════════════════
 
   async enviarPushAlerta(alertaId: number, actualizacionId?: number) {
-    // Obtener la alerta
     const [alerta] = await this.db
       .select()
       .from(schema.altAlertas)
@@ -42,39 +53,21 @@ export class NotificacionesService {
       return;
     }
 
-    // Obtener categoría para el título enriquecido
     const [categoria] = await this.db
       .select({ nombre: schema.catCategoriasAlerta.nombre })
       .from(schema.catCategoriasAlerta)
       .where(eq(schema.catCategoriasAlerta.id, alerta.categoriaId));
 
-    // Obtener usuarios con push activo y tokenPush
-    const usuarios = await this.db
-      .select({
-        id: schema.altUsuarios.id,
-        tokenPush: schema.altUsuarios.tokenPush,
-        latitud: schema.altUsuarios.latitud,
-        longitud: schema.altUsuarios.longitud,
-      })
-      .from(schema.altUsuarios)
-      .where(
-        and(
-          eq(schema.altUsuarios.notifActivas, true),
-          isNull(schema.altUsuarios.eliminadoEn),
-        ),
-      );
-
-    // Filtrar solo los que tienen tokenPush (subscription ID de OneSignal)
+    const usuarios = await this.obtenerUsuariosAfectados(alerta);
     const usuariosConToken = usuarios.filter((u) => u.tokenPush);
 
     if (usuariosConToken.length === 0) {
-      this.logger.warn(`No hay usuarios con push activo para la alerta ${alertaId}.`);
-      return { enviadas: 0, mensaje: 'No hay usuarios con push activo.' };
+      this.logger.warn(`No hay usuarios en el área de la alerta ${alertaId}.`);
+      return { enviadas: 0, mensaje: 'No hay usuarios en el área afectada.' };
     }
 
     const subscriptionIds = usuariosConToken.map((u) => u.tokenPush!);
 
-    // Construir el contenido
     const severidadEmoji: Record<string, string> = {
       emergencia: '🚨',
       preventiva: '⚠️',
@@ -85,11 +78,11 @@ export class NotificacionesService {
 
     const headings = {
       en: `${emoji} ${categoriaNombre}`,
-      es: `${emoji} ${categoriaNombre}`
+      es: `${emoji} ${categoriaNombre}`,
     };
     const contents = {
       en: alerta.titulo,
-      es: alerta.titulo
+      es: alerta.titulo,
     };
     const data = {
       alertaId: alerta.id,
@@ -98,7 +91,6 @@ export class NotificacionesService {
       actualizacionId: actualizacionId ?? null,
     };
 
-    // Enviar via OneSignal
     let onesignalResponse: { id: string; recipients: number };
     try {
       onesignalResponse = await this.onesignal.sendToSubscriptionIds(
@@ -110,47 +102,21 @@ export class NotificacionesService {
       );
     } catch (error) {
       this.logger.error(`Fallo al enviar push para alerta ${alertaId}: ${(error as Error).message}`);
-
-      // Registrar fallo para cada usuario
-      await this.registrarEnvios(
-        alertaId,
-        actualizacionId ?? null,
-        usuariosConToken,
-        'fallida',
-        null,
-        (error as Error).message,
-      );
-
+      await this.registrarEnvios(alertaId, actualizacionId ?? null, usuariosConToken, 'fallida', null, (error as Error).message);
       return { enviadas: 0, error: (error as Error).message };
     }
 
-    // Registrar éxito para cada usuario
-    await this.registrarEnvios(
-      alertaId,
-      actualizacionId ?? null,
-      usuariosConToken,
-      'enviada',
-      onesignalResponse.id,
-      null,
-    );
+    await this.registrarEnvios(alertaId, actualizacionId ?? null, usuariosConToken, 'enviada', onesignalResponse.id, null);
 
-    // Actualizar contador de la alerta
     const recipients = onesignalResponse.recipients ?? usuariosConToken.length;
     await this.db
       .update(schema.altAlertas)
-      .set({
-        totalEnviadas: (alerta.totalEnviadas ?? 0) + recipients,
-      })
+      .set({ totalEnviadas: (alerta.totalEnviadas ?? 0) + recipients })
       .where(eq(schema.altAlertas.id, alertaId));
 
-    this.logger.log(
-      `Push enviado para alerta ${alertaId}: ${recipients} destinatarios`,
-    );
+    this.logger.log(`Push enviado para alerta ${alertaId}: ${recipients} destinatarios`);
 
-    return {
-      enviadas: recipients,
-      onesignalId: onesignalResponse.id,
-    };
+    return { enviadas: recipients, onesignalId: onesignalResponse.id };
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -159,28 +125,13 @@ export class NotificacionesService {
 
   async enviarPushActualizacion(alertaId: number, actualizacionId: number, mensaje: string) {
     const [alerta] = await this.db
-      .select({ id: schema.altAlertas.id, titulo: schema.altAlertas.titulo })
+      .select()
       .from(schema.altAlertas)
       .where(eq(schema.altAlertas.id, alertaId));
 
     if (!alerta) return;
 
-    // Obtener usuarios con push activo
-    const usuarios = await this.db
-      .select({
-        id: schema.altUsuarios.id,
-        tokenPush: schema.altUsuarios.tokenPush,
-        latitud: schema.altUsuarios.latitud,
-        longitud: schema.altUsuarios.longitud,
-      })
-      .from(schema.altUsuarios)
-      .where(
-        and(
-          eq(schema.altUsuarios.notifActivas, true),
-          isNull(schema.altUsuarios.eliminadoEn),
-        ),
-      );
-
+    const usuarios = await this.obtenerUsuariosAfectados(alerta);
     const usuariosConToken = usuarios.filter((u) => u.tokenPush);
     if (usuariosConToken.length === 0) return { enviadas: 0 };
 
@@ -191,37 +142,147 @@ export class NotificacionesService {
         subscriptionIds,
         {
           en: `📢 Update: ${alerta.titulo}`,
-          es: `📢 Actualización: ${alerta.titulo}`
+          es: `📢 Actualización: ${alerta.titulo}`,
         },
         {
           en: mensaje,
-          es: mensaje
+          es: mensaje,
         },
         { alertaId, actualizacionId },
       );
 
-      await this.registrarEnvios(
-        alertaId,
-        actualizacionId,
-        usuariosConToken,
-        'enviada',
-        response.id,
-        null,
-      );
+      await this.registrarEnvios(alertaId, actualizacionId, usuariosConToken, 'enviada', response.id, null);
 
       const recipients = response.recipients ?? usuariosConToken.length;
       return { enviadas: recipients, onesignalId: response.id };
     } catch (error) {
-      await this.registrarEnvios(
-        alertaId,
-        actualizacionId,
-        usuariosConToken,
-        'fallida',
-        null,
-        (error as Error).message,
-      );
+      await this.registrarEnvios(alertaId, actualizacionId, usuariosConToken, 'fallida', null, (error as Error).message);
       return { enviadas: 0, error: (error as Error).message };
     }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // FILTRADO GEOGRÁFICO
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  private async obtenerUsuariosAfectados(alerta: schema.Alerta): Promise<UsuarioAfectado[]> {
+    const camposUsuario = {
+      id: schema.altUsuarios.id,
+      tokenPush: schema.altUsuarios.tokenPush,
+      latitud: schema.altUsuarios.latitud,
+      longitud: schema.altUsuarios.longitud,
+    };
+
+    const condicionBase = and(
+      eq(schema.altUsuarios.notifActivas, true),
+      isNull(schema.altUsuarios.eliminadoEn),
+    );
+
+    // Cobertura nacional: todos los usuarios
+    if (alerta.nivelCobertura === 'pais') {
+      return this.db.select(camposUsuario).from(schema.altUsuarios).where(condicionBase);
+    }
+
+    const idsAfectados = new Set<number>();
+
+    // Criterio 1: usuarios suscritos a las zonas de la alerta
+    const zonaIds = await this.obtenerZonasAlerta(alerta);
+    if (zonaIds.length > 0) {
+      const usuariosZona = await this.db
+        .selectDistinct({ usuarioId: schema.altUsuariosZonas.usuarioId })
+        .from(schema.altUsuariosZonas)
+        .innerJoin(schema.altUsuarios, eq(schema.altUsuariosZonas.usuarioId, schema.altUsuarios.id))
+        .where(
+          and(
+            inArray(schema.altUsuariosZonas.zonaId, zonaIds),
+            eq(schema.altUsuariosZonas.activo, true),
+            isNull(schema.altUsuariosZonas.eliminadoEn),
+            eq(schema.altUsuarios.notifActivas, true),
+            isNull(schema.altUsuarios.eliminadoEn),
+          ),
+        );
+      usuariosZona.forEach((u) => idsAfectados.add(u.usuarioId));
+    }
+
+    // Criterio 2: usuarios dentro del radio (Haversine en SQL)
+    if (alerta.centroLatitud && alerta.centroLongitud && alerta.radioKm) {
+      const lat = parseFloat(alerta.centroLatitud);
+      const lon = parseFloat(alerta.centroLongitud);
+      const radio = parseFloat(alerta.radioKm);
+
+      const usuariosRadio = await this.db
+        .select({ id: schema.altUsuarios.id })
+        .from(schema.altUsuarios)
+        .where(
+          and(
+            condicionBase,
+            isNotNull(schema.altUsuarios.latitud),
+            isNotNull(schema.altUsuarios.longitud),
+            sql`
+              6371 * acos(
+                GREATEST(-1, LEAST(1,
+                  cos(radians(${lat})) * cos(radians(${schema.altUsuarios.latitud}::numeric))
+                  * cos(radians(${schema.altUsuarios.longitud}::numeric) - radians(${lon}))
+                  + sin(radians(${lat})) * sin(radians(${schema.altUsuarios.latitud}::numeric))
+                ))
+              ) <= ${radio}
+            `,
+          ),
+        );
+      usuariosRadio.forEach((u) => idsAfectados.add(u.id));
+    }
+
+    // Criterio 3: usuarios dentro del polígono personalizado (punto en polígono en TS)
+    if (alerta.poligonoZona) {
+      const usuariosConGps = await this.db
+        .select({ id: schema.altUsuarios.id, latitud: schema.altUsuarios.latitud, longitud: schema.altUsuarios.longitud })
+        .from(schema.altUsuarios)
+        .where(
+          and(
+            condicionBase,
+            isNotNull(schema.altUsuarios.latitud),
+            isNotNull(schema.altUsuarios.longitud),
+          ),
+        );
+
+      usuariosConGps
+        .filter((u) => puntoDentroDePoligono(parseFloat(u.latitud!), parseFloat(u.longitud!), alerta.poligonoZona))
+        .forEach((u) => idsAfectados.add(u.id));
+    }
+
+    if (idsAfectados.size === 0) return [];
+
+    return this.db
+      .select(camposUsuario)
+      .from(schema.altUsuarios)
+      .where(
+        and(
+          condicionBase,
+          inArray(schema.altUsuarios.id, Array.from(idsAfectados)),
+        ),
+      );
+  }
+
+  private async obtenerZonasAlerta(alerta: schema.Alerta): Promise<number[]> {
+    const zonaIds = new Set<number>();
+
+    if (alerta.zonaId) {
+      zonaIds.add(alerta.zonaId);
+    }
+
+    const zonasNM = await this.db
+      .select({ zonaId: schema.altAlertasZonas.zonaId })
+      .from(schema.altAlertasZonas)
+      .where(
+        and(
+          eq(schema.altAlertasZonas.alertaId, alerta.id),
+          isNull(schema.altAlertasZonas.eliminadoEn),
+        ),
+      );
+
+    zonasNM.forEach((z) => zonaIds.add(z.zonaId));
+
+    return Array.from(zonaIds);
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -236,7 +297,6 @@ export class NotificacionesService {
     providerMessageId: string | null,
     mensajeError: string | null,
   ) {
-    // Insertar en lotes de 100 para evitar queries enormes
     const batchSize = 100;
     const now = estatus === 'enviada' ? new Date() : undefined;
 
