@@ -188,3 +188,31 @@ Una colección de Postman está disponible en `postman/Alertamientos-API.postman
 Dos scripts de semilla están disponibles:
 - `src/database/seed/run-sql.ts` - Ejecutor genérico de SQL
 - `src/database/seed/create-superadmin.ts` - Crea el usuario super administrador inicial
+
+## Scripts de Administración
+
+### Crear administrador (`scripts/create-admin.ts`)
+
+Herramienta de línea de comandos para crear nuevos usuarios administradores. No forma parte del flujo de seeds ni migraciones.
+
+```bash
+npx tsx scripts/create-admin.ts \
+  --nombre="Juan" \
+  --apellidos="Pérez" \
+  --email="juan@ejemplo.com" \
+  --password="Pass2026!" \
+  --rol="admin"
+```
+
+**Argumentos:**
+
+| Argumento | Requerido | Descripción |
+|---|---|---|
+| `--nombre` | Sí | Nombre del administrador |
+| `--apellidos` | Sí | Apellidos del administrador |
+| `--email` | Sí | Email (debe ser único) |
+| `--password` | Sí | Contraseña en texto plano (se hashea con bcrypt) |
+| `--rol` | No | `superadmin` \| `admin` \| `editor` (default: `editor`) |
+
+- Si el email ya existe, el script termina sin hacer cambios.
+- Lee `.env.local` primero, luego `.env` para obtener `DATABASE_URL`.
