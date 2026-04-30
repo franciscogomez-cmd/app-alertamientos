@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -8,8 +9,14 @@ import {
   Patch,
   Post,
   Query,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
+import { plainToInstance } from 'class-transformer';
+import { validate } from 'class-validator';
 
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentAdmin } from '../auth/decorators/current-admin.decorator';
@@ -21,6 +28,8 @@ import {
   QueryAlertasDto,
 } from './dto';
 
+const multerMemory = { storage: memoryStorage() };
+
 @Controller('alertas')
 export class AlertasController {
   constructor(private readonly alertasService: AlertasService) {}
@@ -31,8 +40,27 @@ export class AlertasController {
 
   @Post()
   @UseGuards(JwtAuthGuard)
-  create(@Body() dto: CreateAlertaDto, @CurrentAdmin() admin: any) {
-    return this.alertasService.create(dto, admin.id);
+  @UseInterceptors(FileInterceptor('imagen', multerMemory))
+  async create(
+    @UploadedFile() imagen: Express.Multer.File | undefined,
+    @Body('data') rawData: string,
+    @CurrentAdmin() admin: any,
+  ) {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(rawData);
+    } catch {
+      throw new BadRequestException('El campo "data" debe ser un JSON válido.');
+    }
+
+    const dto = plainToInstance(CreateAlertaDto, parsed);
+    const errors = await validate(dto, { whitelist: true, forbidNonWhitelisted: false });
+    if (errors.length > 0) {
+      const messages = errors.flatMap((e) => Object.values(e.constraints ?? {}));
+      throw new BadRequestException(messages);
+    }
+
+    return this.alertasService.create(dto, admin.id, imagen);
   }
 
   @Get()
@@ -61,6 +89,24 @@ export class AlertasController {
   @UseGuards(JwtAuthGuard)
   remove(@Param('id', ParseIntPipe) id: number, @CurrentAdmin() admin: any) {
     return this.alertasService.remove(id, admin.id);
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // IMAGEN
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  @Post(':id/imagen')
+  @UseGuards(JwtAuthGuard)
+  @UseInterceptors(FileInterceptor('imagen', multerMemory))
+  subirImagen(
+    @Param('id', ParseIntPipe) id: number,
+    @UploadedFile() imagen: Express.Multer.File,
+    @CurrentAdmin() admin: any,
+  ) {
+    if (!imagen) {
+      throw new BadRequestException('Se requiere un archivo en el campo "imagen".');
+    }
+    return this.alertasService.subirImagen(id, imagen, admin.id);
   }
 
   // ═══════════════════════════════════════════════════════════════════════════

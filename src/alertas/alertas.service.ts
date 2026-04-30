@@ -10,6 +10,7 @@ import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import { DRIZZLE } from '../database/database.constants';
 import * as schema from '../database/schema';
 import { NotificacionesService } from '../notificaciones/notificaciones.service';
+import { StorageService } from '../storage/storage.service';
 import {
   CreateAlertaDto,
   UpdateAlertaDto,
@@ -24,13 +25,14 @@ export class AlertasService {
   constructor(
     @Inject(DRIZZLE) private readonly db: DrizzleDB,
     private readonly notificaciones: NotificacionesService,
+    private readonly storage: StorageService,
   ) {}
 
   // ═══════════════════════════════════════════════════════════════════════════
   // CREAR ALERTA
   // ═══════════════════════════════════════════════════════════════════════════
 
-  async create(dto: CreateAlertaDto, adminId: number) {
+  async create(dto: CreateAlertaDto, adminId: number, imagen?: Express.Multer.File) {
     const { zonas, ...alertaData } = dto;
 
     // Validar constraint: al menos una referencia geográfica
@@ -93,6 +95,12 @@ export class AlertasService {
       }
     }
 
+    // Subir imagen a S3 si se envió
+    let imagenKey: string | undefined = alertaData.imagenUrl;
+    if (imagen) {
+      imagenKey = await this.storage.upload(imagen, 'alertas');
+    }
+
     // Insertar la alerta principal
     const [alerta] = await this.db
       .insert(schema.altAlertas)
@@ -111,7 +119,7 @@ export class AlertasService {
         radioKm: alertaData.radioKm?.toString(),
         poligonoZona: alertaData.poligonoZona,
         acciones: alertaData.acciones,
-        imagenUrl: alertaData.imagenUrl,
+        imagenUrl: imagenKey,
         mapaVisible: alertaData.mapaVisible,
         creadoPor: adminId,
       })
@@ -263,8 +271,15 @@ export class AlertasService {
       )
       .orderBy(desc(schema.altActualizacionesAlerta.creadoEn));
 
+    // Generar signed URL si la alerta tiene imagen almacenada en S3
+    let imagenUrl: string | null = alerta.imagenUrl ?? null;
+    if (alerta.imagenUrl && !alerta.imagenUrl.startsWith('http')) {
+      imagenUrl = await this.storage.getSignedUrl(alerta.imagenUrl);
+    }
+
     return {
       ...alerta,
+      imagenUrl,
       categoria,
       zona,
       zonas: alertasZonas,
@@ -707,6 +722,28 @@ export class AlertasService {
   // ═══════════════════════════════════════════════════════════════════════════
   // UTILIDAD PRIVADA: distancia Haversine entre dos coordenadas (km)
   // ═══════════════════════════════════════════════════════════════════════════
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // SUBIR / REEMPLAZAR IMAGEN DE UNA ALERTA
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  async subirImagen(alertaId: number, imagen: Express.Multer.File, adminId: number) {
+    const alerta = await this.findOne(alertaId);
+
+    // Borrar imagen anterior del bucket si existe y es una clave S3
+    if (alerta.imagenUrl && !alerta.imagenUrl.startsWith('http')) {
+      await this.storage.delete(alerta.imagenUrl);
+    }
+
+    const key = await this.storage.upload(imagen, 'alertas');
+
+    await this.db
+      .update(schema.altAlertas)
+      .set({ imagenUrl: key, actualizadoPor: adminId, actualizadoEn: new Date() })
+      .where(eq(schema.altAlertas.id, alertaId));
+
+    return this.findOne(alertaId);
+  }
 
   private haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
     const R = 6371;

@@ -31,6 +31,26 @@ export class EnvironmentVariables {
   @IsString()
   @IsNotEmpty()
   ONESIGNAL_REST_API_KEY!: string;
+
+  @IsString()
+  @IsOptional()
+  AWS_ACCESS_KEY_ID?: string;
+
+  @IsString()
+  @IsOptional()
+  AWS_SECRET_ACCESS_KEY?: string;
+
+  @IsString()
+  @IsOptional()
+  AWS_ENDPOINT_URL?: string;
+
+  @IsString()
+  @IsOptional()
+  AWS_DEFAULT_REGION?: string;
+
+  @IsString()
+  @IsOptional()
+  AWS_S3_BUCKET_NAME?: string;
 }
 
 export function validate(config: Record<string, unknown>): EnvironmentVariables {
