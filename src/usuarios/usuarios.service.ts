@@ -20,6 +20,7 @@ import {
   UpdatePreferenciasDto,
   QueryNotificacionesUsuarioDto,
 } from './dto';
+import { isWithinNayarit } from './utils/nayarit-bounds.util';
 
 type DrizzleDB = PostgresJsDatabase<typeof schema>;
 
@@ -52,6 +53,14 @@ export class UsuariosService {
       throw new ConflictException(
         `Ya existe un usuario registrado con deviceId "${dto.deviceId}".`,
       );
+    }
+
+    if (dto.latitud !== undefined && dto.longitud !== undefined) {
+      if (!isWithinNayarit(dto.latitud, dto.longitud)) {
+        throw new BadRequestException(
+          'El usuario se encuentra fuera del estado de Nayarit. No es posible registrar la ubicación.',
+        );
+      }
     }
 
     const [usuario] = await this.db
@@ -228,6 +237,14 @@ export class UsuariosService {
     if (data.versionApp !== undefined) updateValues.versionApp = data.versionApp;
     if (data.modeloDispositivo !== undefined) updateValues.modeloDispositivo = data.modeloDispositivo;
     if (data.sistemaOperativo !== undefined) updateValues.sistemaOperativo = data.sistemaOperativo;
+    if (data.latitud !== undefined && data.longitud !== undefined) {
+      if (!isWithinNayarit(data.latitud, data.longitud)) {
+        throw new BadRequestException(
+          'El usuario se encuentra fuera del estado de Nayarit. No se actualizará su ubicación.',
+        );
+      }
+    }
+
     if (data.latitud !== undefined) updateValues.latitud = data.latitud?.toString();
     if (data.longitud !== undefined) updateValues.longitud = data.longitud?.toString();
     if (data.precisionMetros !== undefined) updateValues.precisionMetros = data.precisionMetros?.toString();
@@ -298,6 +315,12 @@ export class UsuariosService {
 
   async updateUbicacion(id: number, dto: UpdateUbicacionDto) {
     await this.findOne(id);
+
+    if (!isWithinNayarit(dto.latitud, dto.longitud)) {
+      throw new BadRequestException(
+        'El usuario se encuentra fuera del estado de Nayarit. No se actualizará su ubicación.',
+      );
+    }
 
     const [updated] = await this.db
       .update(schema.altUsuarios)
