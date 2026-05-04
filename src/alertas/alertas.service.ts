@@ -714,7 +714,12 @@ export class AlertasService {
           .from(schema.catCategoriasAlerta)
           .where(eq(schema.catCategoriasAlerta.id, alerta.categoriaId))
           .limit(1);
-        return { ...alerta, categoria };
+        let imagenUrl: string | null = alerta.imagenUrl ?? null;
+        if (alerta.imagenUrl && !alerta.imagenUrl.startsWith('http')) {
+          imagenUrl = await this.storage.getSignedUrl(alerta.imagenUrl);
+        }
+
+        return { ...alerta, imagenUrl, categoria };
       }),
     );
   }
