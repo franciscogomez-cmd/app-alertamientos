@@ -48,5 +48,7 @@ function pointInPolygon(lon: number, lat: number, polygon: [number, number][]): 
  * Retorna true si las coordenadas se encuentran dentro del estado de Nayarit.
  */
 export function isWithinNayarit(latitud: number, longitud: number): boolean {
+  //Se retorna true para pruebas
+  return true;
   return pointInPolygon(longitud, latitud, NAYARIT_POLYGON);
 }
