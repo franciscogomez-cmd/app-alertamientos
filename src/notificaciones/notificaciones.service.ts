@@ -18,26 +18,41 @@ type UsuarioAfectado = {
 // Sólo los campos necesarios para el filtrado geográfico — evita SELECT * en enviarPushActualizacion
 type AlertaParaNotificacion = Pick<
   schema.Alerta,
-  'id' | 'nivelCobertura' | 'zonaId' | 'centroLatitud' | 'centroLongitud' | 'radioKm' | 'poligonoZona'
+  | 'id'
+  | 'nivelCobertura'
+  | 'zonaId'
+  | 'centroLatitud'
+  | 'centroLongitud'
+  | 'radioKm'
+  | 'poligonoZona'
 >;
 
 // ─── GeoJSON helpers ─────────────────────────────────────────────────────────
 
 type GeoRing = [number, number][];
 
-function puntoDentroDeAnillo(lat: number, lon: number, anillo: GeoRing): boolean {
+function puntoDentroDeAnillo(
+  lat: number,
+  lon: number,
+  anillo: GeoRing,
+): boolean {
   let dentro = false;
   for (let i = 0, j = anillo.length - 1; i < anillo.length; j = i++) {
     const [xi, yi] = anillo[i]; // GeoJSON: [lon, lat]
     const [xj, yj] = anillo[j];
-    const cruza = (yi > lat) !== (yj > lat) && lon < ((xj - xi) * (lat - yi)) / (yj - yi) + xi;
+    const cruza =
+      yi > lat !== yj > lat && lon < ((xj - xi) * (lat - yi)) / (yj - yi) + xi;
     if (cruza) dentro = !dentro;
   }
   return dentro;
 }
 
 // Ray-casting — soporta Polygon y MultiPolygon
-function puntoDentroDePoligono(lat: number, lon: number, geojson: unknown): boolean {
+function puntoDentroDePoligono(
+  lat: number,
+  lon: number,
+  geojson: unknown,
+): boolean {
   if (!geojson || typeof geojson !== 'object') return false;
   const g = geojson as { type?: unknown; coordinates?: unknown };
 
@@ -78,7 +93,10 @@ function calcularBboxGeojson(
 
   if (anillos.length === 0) return null;
 
-  let minLat = Infinity, maxLat = -Infinity, minLon = Infinity, maxLon = -Infinity;
+  let minLat = Infinity,
+    maxLat = -Infinity,
+    minLon = Infinity,
+    maxLon = -Infinity;
   for (const anillo of anillos) {
     for (const [lon, lat] of anillo) {
       if (lat < minLat) minLat = lat;
@@ -165,29 +183,58 @@ export class NotificacionesService {
         alerta.imagenUrl ?? undefined,
       );
     } catch (error) {
-      this.logger.error(`Fallo al enviar push para alerta ${alertaId}: ${(error as Error).message}`);
-      await this.registrarEnvios(alertaId, actualizacionId ?? null, usuariosConToken, 'fallida', null, (error as Error).message);
+      this.logger.error(
+        `Fallo al enviar push para alerta ${alertaId}: ${(error as Error).message}`,
+      );
+      await this.registrarEnvios(
+        alertaId,
+        actualizacionId ?? null,
+        usuariosConToken,
+        'fallida',
+        null,
+        (error as Error).message,
+      );
       return { enviadas: 0, error: (error as Error).message };
     }
 
-    await this.registrarEnvios(alertaId, actualizacionId ?? null, usuariosConToken, 'enviada', onesignalResponse.id, null);
+    await this.registrarEnvios(
+      alertaId,
+      actualizacionId ?? null,
+      usuariosConToken,
+      'enviada',
+      onesignalResponse.id,
+      null,
+    );
 
     // Incremento atómico — evita race condition con envíos concurrentes
+    const recipients = onesignalResponse.recipients ?? usuariosConToken.length;
+
     await this.db
       .update(schema.altAlertas)
-      .set({ totalEnviadas: sql`${schema.altAlertas.totalEnviadas} + ${onesignalResponse.recipients}` })
+      .set({
+        totalEnviadas: sql`${schema.altAlertas.totalEnviadas} + ${recipients}`,
+      })
       .where(eq(schema.altAlertas.id, alertaId));
 
-    this.logger.log(`Push enviado para alerta ${alertaId}: ${onesignalResponse.recipients} destinatarios`);
+    this.logger.log(
+      `Push enviado para alerta ${alertaId}: ${onesignalResponse.recipients} destinatarios`,
+    );
 
-    return { enviadas: onesignalResponse.recipients, onesignalId: onesignalResponse.id };
+    return {
+      enviadas: onesignalResponse.recipients,
+      onesignalId: onesignalResponse.id,
+    };
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
   // ENVIAR PUSH DE ACTUALIZACIÓN
   // ═══════════════════════════════════════════════════════════════════════════
 
-  async enviarPushActualizacion(alertaId: number, actualizacionId: number, mensaje: string) {
+  async enviarPushActualizacion(
+    alertaId: number,
+    actualizacionId: number,
+    mensaje: string,
+  ) {
     const [alerta] = await this.db
       .select({
         id: schema.altAlertas.id,
@@ -224,10 +271,24 @@ export class NotificacionesService {
         { alertaId, actualizacionId },
       );
 
-      await this.registrarEnvios(alertaId, actualizacionId, usuariosConToken, 'enviada', response.id, null);
+      await this.registrarEnvios(
+        alertaId,
+        actualizacionId,
+        usuariosConToken,
+        'enviada',
+        response.id,
+        null,
+      );
       return { enviadas: response.recipients, onesignalId: response.id };
     } catch (error) {
-      await this.registrarEnvios(alertaId, actualizacionId, usuariosConToken, 'fallida', null, (error as Error).message);
+      await this.registrarEnvios(
+        alertaId,
+        actualizacionId,
+        usuariosConToken,
+        'fallida',
+        null,
+        (error as Error).message,
+      );
       return { enviadas: 0, error: (error as Error).message };
     }
   }
@@ -236,7 +297,9 @@ export class NotificacionesService {
   // FILTRADO GEOGRÁFICO
   // ═══════════════════════════════════════════════════════════════════════════
 
-  private async obtenerUsuariosAfectados(alerta: AlertaParaNotificacion): Promise<UsuarioAfectado[]> {
+  private async obtenerUsuariosAfectados(
+    alerta: AlertaParaNotificacion,
+  ): Promise<UsuarioAfectado[]> {
     const camposUsuario = {
       id: schema.altUsuarios.id,
       tokenPush: schema.altUsuarios.tokenPush,
@@ -249,21 +312,25 @@ export class NotificacionesService {
       isNull(schema.altUsuarios.eliminadoEn),
     );
 
-    // Cobertura nacional: todos los usuarios
     if (alerta.nivelCobertura === 'pais') {
-      return this.db.select(camposUsuario).from(schema.altUsuarios).where(condicionBase);
+      return this.db
+        .select(camposUsuario)
+        .from(schema.altUsuarios)
+        .where(condicionBase);
     }
 
-    // Usamos Map para deduplicar por ID sin una segunda consulta con inArray
     const mapaAfectados = new Map<number, UsuarioAfectado>();
 
-    // Criterio 1: usuarios suscritos a las zonas de la alerta
+    // ── Criterio 1: usuarios suscritos a las zonas de la alerta (sin cambios) ──
     const zonaIds = await this.obtenerZonasAlerta(alerta);
     if (zonaIds.length > 0) {
       const usuariosZona = await this.db
         .select(camposUsuario)
         .from(schema.altUsuariosZonas)
-        .innerJoin(schema.altUsuarios, eq(schema.altUsuariosZonas.usuarioId, schema.altUsuarios.id))
+        .innerJoin(
+          schema.altUsuarios,
+          eq(schema.altUsuariosZonas.usuarioId, schema.altUsuarios.id),
+        )
         .where(
           and(
             inArray(schema.altUsuariosZonas.zonaId, zonaIds),
@@ -275,14 +342,142 @@ export class NotificacionesService {
       usuariosZona.forEach((u) => mapaAfectados.set(u.id, u));
     }
 
-    // Criterio 2: usuarios dentro del radio (Haversine en SQL)
+    // ── Criterio 1b (NUEVO): usuarios cuyo CP coincide con el de las zonas ──
+    //    Cubre el caso en que el usuario no tiene GPS pero sí código postal
+    if (zonaIds.length > 0) {
+      const zonasConCp = await this.db
+        .select({
+          id: schema.catZonasGeograficas.id,
+          codigoPostal: schema.catZonasGeograficas.codigoPostal,
+        })
+        .from(schema.catZonasGeograficas)
+        .where(
+          and(
+            inArray(schema.catZonasGeograficas.id, zonaIds),
+            isNotNull(schema.catZonasGeograficas.codigoPostal),
+            isNull(schema.catZonasGeograficas.eliminadoEn),
+          ),
+        );
+
+      const codigosPostales = [
+        ...new Set(
+          zonasConCp.map((z) => z.codigoPostal).filter(Boolean) as string[],
+        ),
+      ];
+
+      if (codigosPostales.length > 0) {
+        const usuariosCp = await this.db
+          .select(camposUsuario)
+          .from(schema.altUsuarios)
+          .where(
+            and(
+              condicionBase,
+              isNotNull(schema.altUsuarios.codigoPostal),
+              inArray(schema.altUsuarios.codigoPostal, codigosPostales),
+            ),
+          );
+        usuariosCp.forEach((u) => mapaAfectados.set(u.id, u));
+      }
+    }
+
+    // ── Criterio 1c (NUEVO): GPS del usuario dentro de la geometría de la zona ──
+    //    Cubre el caso en que el usuario tiene GPS pero no está suscrito a la zona
+    if (zonaIds.length > 0) {
+      const zonasConGeometria = await this.db
+        .select({
+          id: schema.catZonasGeograficas.id,
+          centroLatitud: schema.catZonasGeograficas.centroLatitud,
+          centroLongitud: schema.catZonasGeograficas.centroLongitud,
+          radioKm: schema.catZonasGeograficas.radioKm,
+          poligono: schema.catZonasGeograficas.poligono,
+        })
+        .from(schema.catZonasGeograficas)
+        .where(
+          and(
+            inArray(schema.catZonasGeograficas.id, zonaIds),
+            isNull(schema.catZonasGeograficas.eliminadoEn),
+          ),
+        );
+
+      for (const zona of zonasConGeometria) {
+        // Radio Haversine en SQL contra la geometría de la zona del catálogo
+        if (zona.centroLatitud && zona.centroLongitud && zona.radioKm) {
+          const lat = parseFloat(zona.centroLatitud);
+          const lon = parseFloat(zona.centroLongitud);
+          const radio = parseFloat(zona.radioKm);
+
+          if (!isNaN(lat) && !isNaN(lon) && !isNaN(radio)) {
+            const usuariosRadioZona = await this.db
+              .select(camposUsuario)
+              .from(schema.altUsuarios)
+              .where(
+                and(
+                  condicionBase,
+                  isNotNull(schema.altUsuarios.latitud),
+                  isNotNull(schema.altUsuarios.longitud),
+                  sql`
+                    6371 * acos(
+                      GREATEST(-1, LEAST(1,
+                        cos(radians(${lat})) * cos(radians(${schema.altUsuarios.latitud}::numeric))
+                        * cos(radians(${schema.altUsuarios.longitud}::numeric) - radians(${lon}))
+                        + sin(radians(${lat})) * sin(radians(${schema.altUsuarios.latitud}::numeric))
+                      ))
+                    ) <= ${radio}
+                  `,
+                ),
+              );
+            usuariosRadioZona.forEach((u) => mapaAfectados.set(u.id, u));
+          }
+        }
+
+        // Polígono de la zona del catálogo (misma lógica que poligonoZona de la alerta)
+        if (zona.poligono) {
+          const bbox = calcularBboxGeojson(zona.poligono);
+          if (bbox) {
+            const { minLat, maxLat, minLon, maxLon } = bbox;
+            const candidatos = await this.db
+              .select(camposUsuario)
+              .from(schema.altUsuarios)
+              .where(
+                and(
+                  condicionBase,
+                  isNotNull(schema.altUsuarios.latitud),
+                  isNotNull(schema.altUsuarios.longitud),
+                  sql`${schema.altUsuarios.latitud}::numeric BETWEEN ${minLat} AND ${maxLat}`,
+                  sql`${schema.altUsuarios.longitud}::numeric BETWEEN ${minLon} AND ${maxLon}`,
+                ),
+              );
+
+            candidatos
+              .filter((u) => {
+                const uLat = parseFloat(u.latitud!);
+                const uLon = parseFloat(u.longitud!);
+                return (
+                  !isNaN(uLat) &&
+                  !isNaN(uLon) &&
+                  puntoDentroDePoligono(uLat, uLon, zona.poligono)
+                );
+              })
+              .forEach((u) => mapaAfectados.set(u.id, u));
+          } else {
+            this.logger.warn(
+              `Zona ${zona.id}: poligono con formato GeoJSON inválido, se omite.`,
+            );
+          }
+        }
+      }
+    }
+
+    // ── Criterio 2: radio directo de la alerta (sin cambios) ──
     if (alerta.centroLatitud && alerta.centroLongitud && alerta.radioKm) {
       const lat = parseFloat(alerta.centroLatitud);
       const lon = parseFloat(alerta.centroLongitud);
       const radio = parseFloat(alerta.radioKm);
 
       if (isNaN(lat) || isNaN(lon) || isNaN(radio)) {
-        this.logger.warn(`Alerta ${alerta.id}: coordenadas de centro inválidas, se omite criterio de radio.`);
+        this.logger.warn(
+          `Alerta ${alerta.id}: coordenadas de centro inválidas, se omite criterio de radio.`,
+        );
       } else {
         const usuariosRadio = await this.db
           .select(camposUsuario)
@@ -307,12 +502,13 @@ export class NotificacionesService {
       }
     }
 
-    // Criterio 3: usuarios dentro del polígono personalizado
-    // Pre-filtro SQL con bounding box → ray-casting exacto en TS sobre candidatos reducidos
+    // ── Criterio 3: polígono directo de la alerta (sin cambios) ──
     if (alerta.poligonoZona) {
       const bbox = calcularBboxGeojson(alerta.poligonoZona);
       if (!bbox) {
-        this.logger.warn(`Alerta ${alerta.id}: poligonoZona con formato GeoJSON inválido (tipo no soportado), se omite.`);
+        this.logger.warn(
+          `Alerta ${alerta.id}: poligonoZona con formato GeoJSON inválido, se omite.`,
+        );
       } else {
         const { minLat, maxLat, minLon, maxLon } = bbox;
         const candidatos = await this.db
@@ -332,7 +528,11 @@ export class NotificacionesService {
           .filter((u) => {
             const uLat = parseFloat(u.latitud!);
             const uLon = parseFloat(u.longitud!);
-            return !isNaN(uLat) && !isNaN(uLon) && puntoDentroDePoligono(uLat, uLon, alerta.poligonoZona);
+            return (
+              !isNaN(uLat) &&
+              !isNaN(uLon) &&
+              puntoDentroDePoligono(uLat, uLon, alerta.poligonoZona)
+            );
           })
           .forEach((u) => mapaAfectados.set(u.id, u));
       }
@@ -341,7 +541,9 @@ export class NotificacionesService {
     return Array.from(mapaAfectados.values());
   }
 
-  private async obtenerZonasAlerta(alerta: Pick<schema.Alerta, 'id' | 'zonaId'>): Promise<number[]> {
+  private async obtenerZonasAlerta(
+    alerta: Pick<schema.Alerta, 'id' | 'zonaId'>,
+  ): Promise<number[]> {
     const zonaIds = new Set<number>();
 
     if (alerta.zonaId) {
@@ -370,7 +572,12 @@ export class NotificacionesService {
   private async registrarEnvios(
     alertaId: number,
     actualizacionId: number | null,
-    usuarios: { id: number; tokenPush: string | null; latitud: string | null; longitud: string | null }[],
+    usuarios: {
+      id: number;
+      tokenPush: string | null;
+      latitud: string | null;
+      longitud: string | null;
+    }[],
     estatus: 'pendiente' | 'enviada' | 'fallida' | 'rebotada',
     providerMessageId: string | null,
     mensajeError: string | null,
@@ -425,7 +632,8 @@ export class NotificacionesService {
       total: registros.length,
       enviadas: registros.filter((r) => r.estatusEnvio === 'enviada').length,
       fallidas: registros.filter((r) => r.estatusEnvio === 'fallida').length,
-      pendientes: registros.filter((r) => r.estatusEnvio === 'pendiente').length,
+      pendientes: registros.filter((r) => r.estatusEnvio === 'pendiente')
+        .length,
       rebotadas: registros.filter((r) => r.estatusEnvio === 'rebotada').length,
       leidas: registros.filter((r) => r.leidaEn !== null).length,
     };
