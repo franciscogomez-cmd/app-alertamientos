@@ -91,19 +91,7 @@ export class UsuariosService {
 
     // ── Sincronizar tags en OneSignal ──────────────────────────────────────
     if (usuario.tokenPush) {
-      this.syncTagsToOneSignal(usuario.tokenPush, {
-        userId: usuario.id.toString(),
-        plataforma: usuario.plataforma ?? '',
-        severidadMinima: usuario.severidadMinima ?? 'informativa',
-        notifActivas: usuario.notifActivas ? '1' : '0',
-        notifMeteorologicas: usuario.notifMeteorologicas ? '1' : '0',
-        notifUltimaHora: usuario.notifUltimaHora ? '1' : '0',
-        notifVialidad: usuario.notifVialidad ? '1' : '0',
-        notifServicios: usuario.notifServicios ? '1' : '0',
-        latitud: usuario.latitud ?? '',
-        longitud: usuario.longitud ?? '',
-        codigoPostal: usuario.codigoPostal ?? '',
-      });
+      this.syncTagsToOneSignal(usuario.tokenPush, this.buildTagsPayload(usuario));
     }
 
     return usuario;
@@ -271,24 +259,7 @@ export class UsuariosService {
 
     // ── Sincronizar tags en OneSignal si tiene tokenPush ─────────────────
     if (updated.tokenPush) {
-      const tags: Record<string, string> = {};
-      if (data.notifActivas !== undefined) tags.notifActivas = data.notifActivas ? '1' : '0';
-      if (data.severidadMinima !== undefined) tags.severidadMinima = data.severidadMinima;
-      if (data.notifMeteorologicas !== undefined) tags.notifMeteorologicas = data.notifMeteorologicas ? '1' : '0';
-      if (data.notifUltimaHora !== undefined) tags.notifUltimaHora = data.notifUltimaHora ? '1' : '0';
-      if (data.notifVialidad !== undefined) tags.notifVialidad = data.notifVialidad ? '1' : '0';
-      if (data.notifServicios !== undefined) tags.notifServicios = data.notifServicios ? '1' : '0';
-      if (data.codigoPostal !== undefined) tags.codigoPostal = data.codigoPostal ?? '';
-      if (data.plataforma !== undefined) tags.plataforma = data.plataforma;
-      // Si cambió el tokenPush, re-sincronizar todos los tags
-      if (data.tokenPush !== undefined) {
-        tags.userId = id.toString();
-        tags.severidadMinima = updated.severidadMinima ?? 'informativa';
-        tags.notifActivas = updated.notifActivas ? '1' : '0';
-      }
-      if (Object.keys(tags).length > 0) {
-        this.syncTagsToOneSignal(updated.tokenPush, tags);
-      }
+      this.syncTagsToOneSignal(updated.tokenPush, this.buildTagsPayload(updated));
     }
 
     return updated;
@@ -333,12 +304,9 @@ export class UsuariosService {
       .where(eq(schema.altUsuarios.id, id))
       .returning();
 
-    // ── Sincronizar ubicación en OneSignal ──────────────────────────────
+    // ── Sincronizar tags en OneSignal ───────────────────────────────────
     if (updated.tokenPush) {
-      this.syncTagsToOneSignal(updated.tokenPush, {
-        latitud: dto.latitud.toString(),
-        longitud: dto.longitud.toString(),
-      });
+      this.syncTagsToOneSignal(updated.tokenPush, this.buildTagsPayload(updated));
     }
 
     return updated;
@@ -370,17 +338,9 @@ export class UsuariosService {
       .where(eq(schema.altUsuarios.id, id))
       .returning();
 
-    // ── Sincronizar preferencias en OneSignal ────────────────────────────
+    // ── Sincronizar tags en OneSignal ────────────────────────────────────
     if (updated.tokenPush) {
-      const tags: Record<string, string> = {};
-      if (dto.notifActivas !== undefined) tags.notifActivas = dto.notifActivas ? '1' : '0';
-      if (dto.notifMeteorologicas !== undefined) tags.notifMeteorologicas = dto.notifMeteorologicas ? '1' : '0';
-      if (dto.notifUltimaHora !== undefined) tags.notifUltimaHora = dto.notifUltimaHora ? '1' : '0';
-      if (dto.notifVialidad !== undefined) tags.notifVialidad = dto.notifVialidad ? '1' : '0';
-      if (dto.notifServicios !== undefined) tags.notifServicios = dto.notifServicios ? '1' : '0';
-      if (Object.keys(tags).length > 0) {
-        this.syncTagsToOneSignal(updated.tokenPush, tags);
-      }
+      this.syncTagsToOneSignal(updated.tokenPush, this.buildTagsPayload(updated));
     }
 
     return updated;
@@ -430,9 +390,6 @@ export class UsuariosService {
       .values({ usuarioId, zonaId })
       .returning();
 
-    // ── Sincronizar zonas suscritas en OneSignal ─────────────────────────
-    await this.syncZonasToOneSignal(usuarioId);
-
     return suscripcion;
   }
 
@@ -456,9 +413,6 @@ export class UsuariosService {
         `El usuario ${usuarioId} no está suscrito a la zona ${zonaId}.`,
       );
     }
-
-    // ── Sincronizar zonas suscritas en OneSignal ─────────────────────────
-    await this.syncZonasToOneSignal(usuarioId);
 
     return { message: `Suscripción a zona ${zonaId} eliminada.` };
   }
@@ -514,9 +468,6 @@ export class UsuariosService {
       .where(eq(schema.altUsuariosZonas.id, suscripcion.id))
       .returning();
 
-    // ── Sincronizar zonas suscritas en OneSignal ─────────────────────────
-    await this.syncZonasToOneSignal(usuarioId);
-
     return updated;
   }
 
@@ -540,34 +491,46 @@ export class UsuariosService {
   }
 
   /**
-   * Sincroniza las zonas suscritas del usuario como tag en OneSignal.
-   * Se almacena como una cadena CSV de IDs de zona: "1,3,7"
+   * Construye el payload de tags para OneSignal.
+   * Consolida los 5 flags de notificación en un solo tag "notifPrefs" (bitmask string)
+   * para respetar el límite de 3 tags del plan. Los tags viejos se envían con "" para borrarlos.
    */
-  private async syncZonasToOneSignal(usuarioId: number) {
-    const [usuario] = await this.db
-      .select({ tokenPush: schema.altUsuarios.tokenPush })
-      .from(schema.altUsuarios)
-      .where(eq(schema.altUsuarios.id, usuarioId));
+  private buildTagsPayload(u: {
+    id: number;
+    severidadMinima?: string | null;
+    notifActivas?: boolean | null;
+    notifMeteorologicas?: boolean | null;
+    notifUltimaHora?: boolean | null;
+    notifVialidad?: boolean | null;
+    notifServicios?: boolean | null;
+  }): Record<string, string> {
+    const notifPrefs = [
+      u.notifActivas,
+      u.notifMeteorologicas,
+      u.notifUltimaHora,
+      u.notifVialidad,
+      u.notifServicios,
+    ]
+      .map((v) => (v ? '1' : '0'))
+      .join('');
 
-    if (!usuario?.tokenPush) return;
-
-    const zonas = await this.db
-      .select({ zonaId: schema.altUsuariosZonas.zonaId })
-      .from(schema.altUsuariosZonas)
-      .where(
-        and(
-          eq(schema.altUsuariosZonas.usuarioId, usuarioId),
-          eq(schema.altUsuariosZonas.activo, true),
-          isNull(schema.altUsuariosZonas.eliminadoEn),
-        ),
-      );
-
-    const zonaIds = zonas.map((z) => z.zonaId).join(',');
-
-    this.syncTagsToOneSignal(usuario.tokenPush, {
-      zonas: zonaIds || '',
-      totalZonas: zonas.length.toString(),
-    });
+    return {
+      userId: u.id.toString(),
+      severidadMinima: u.severidadMinima ?? 'informativa',
+      notifPrefs,
+      // Borrar tags obsoletos
+      plataforma: '',
+      notifActivas: '',
+      notifMeteorologicas: '',
+      notifUltimaHora: '',
+      notifVialidad: '',
+      notifServicios: '',
+      latitud: '',
+      longitud: '',
+      codigoPostal: '',
+      zonas: '',
+      totalZonas: '',
+    };
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
