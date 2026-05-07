@@ -38,7 +38,8 @@ export class UsuariosService {
   // ═══════════════════════════════════════════════════════════════════════════
 
   async create(dto: CreateUsuarioDto) {
-    // Verificar deviceId único
+    this.logger.debug(`[create] Iniciando registro | DTO: ${JSON.stringify(dto)}`);
+
     const [existing] = await this.db
       .select({ id: schema.altUsuarios.id })
       .from(schema.altUsuarios)
@@ -48,15 +49,20 @@ export class UsuariosService {
           isNull(schema.altUsuarios.eliminadoEn),
         ),
       );
-    console.log("creando usuario")
+
     if (existing) {
+      this.logger.warn(`[create] deviceId ya registrado: ${dto.deviceId} → id existente: ${existing.id}`);
       throw new ConflictException(
         `Ya existe un usuario registrado con deviceId "${dto.deviceId}".`,
       );
     }
 
+    this.logger.debug(`[create] deviceId libre, procediendo con inserción`);
+
     if (dto.latitud !== undefined && dto.longitud !== undefined) {
+      this.logger.debug(`[create] Validando coordenadas lat=${dto.latitud} lon=${dto.longitud}`);
       if (!isWithinNayarit(dto.latitud, dto.longitud)) {
+        this.logger.warn(`[create] Coordenadas fuera de Nayarit: lat=${dto.latitud} lon=${dto.longitud}`);
         throw new BadRequestException(
           'El usuario se encuentra fuera del estado de Nayarit. No es posible registrar la ubicación.',
         );
@@ -89,9 +95,15 @@ export class UsuariosService {
       })
       .returning();
 
+    this.logger.debug(`[create] Usuario insertado OK | id: ${usuario.id} | tokenPush: ${usuario.tokenPush ?? 'null'}`);
+
     // ── Sincronizar tags en OneSignal ──────────────────────────────────────
     if (usuario.tokenPush) {
-      this.syncTagsToOneSignal(usuario.tokenPush, this.buildTagsPayload(usuario));
+      const tags = this.buildTagsPayload(usuario);
+      this.logger.debug(`[create] Tags a sincronizar con OneSignal: ${JSON.stringify(tags)}`);
+      this.syncTagsToOneSignal(usuario.tokenPush, tags);
+    } else {
+      this.logger.warn(`[create] Usuario ${usuario.id} no tiene tokenPush, se omite sincronización con OneSignal`);
     }
 
     return usuario;
