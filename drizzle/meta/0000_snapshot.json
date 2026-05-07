@@ -1,0 +1,1776 @@
+{
+  "id": "473ec1af-b977-46c6-9d49-a99787c35a84",
+  "prevId": "00000000-0000-0000-0000-000000000000",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "alertas.alt_actualizaciones_alerta": {
+      "name": "alt_actualizaciones_alerta",
+      "schema": "alertas",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "bigint",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "alt_actualizaciones_alerta_id_seq",
+            "schema": "alertas",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "9223372036854775807",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "alerta_id": {
+          "name": "alerta_id",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "mensaje": {
+          "name": "mensaje",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "estatus_anterior": {
+          "name": "estatus_anterior",
+          "type": "estatus_alerta_tipo",
+          "typeSchema": "alertas",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "estatus_nuevo": {
+          "name": "estatus_nuevo",
+          "type": "estatus_alerta_tipo",
+          "typeSchema": "alertas",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "enviar_push": {
+          "name": "enviar_push",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "creado_en": {
+          "name": "creado_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "creado_por": {
+          "name": "creado_por",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "eliminado_en": {
+          "name": "eliminado_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "eliminado_por": {
+          "name": "eliminado_por",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "alt_actualizaciones_alerta_alerta_id_alt_alertas_id_fk": {
+          "name": "alt_actualizaciones_alerta_alerta_id_alt_alertas_id_fk",
+          "tableFrom": "alt_actualizaciones_alerta",
+          "tableTo": "alt_alertas",
+          "schemaTo": "alertas",
+          "columnsFrom": [
+            "alerta_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "alt_actualizaciones_alerta_creado_por_alt_administradores_id_fk": {
+          "name": "alt_actualizaciones_alerta_creado_por_alt_administradores_id_fk",
+          "tableFrom": "alt_actualizaciones_alerta",
+          "tableTo": "alt_administradores",
+          "schemaTo": "alertas",
+          "columnsFrom": [
+            "creado_por"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "alt_actualizaciones_alerta_eliminado_por_alt_administradores_id_fk": {
+          "name": "alt_actualizaciones_alerta_eliminado_por_alt_administradores_id_fk",
+          "tableFrom": "alt_actualizaciones_alerta",
+          "tableTo": "alt_administradores",
+          "schemaTo": "alertas",
+          "columnsFrom": [
+            "eliminado_por"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "alertas.alt_administradores": {
+      "name": "alt_administradores",
+      "schema": "alertas",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "alt_administradores_id_seq",
+            "schema": "alertas",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "nombre": {
+          "name": "nombre",
+          "type": "varchar(120)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "apellidos": {
+          "name": "apellidos",
+          "type": "varchar(120)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "email": {
+          "name": "email",
+          "type": "varchar(254)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "hash_password": {
+          "name": "hash_password",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "rol": {
+          "name": "rol",
+          "type": "varchar(60)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'editor'"
+        },
+        "activo": {
+          "name": "activo",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "creado_en": {
+          "name": "creado_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "creado_por": {
+          "name": "creado_por",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "actualizado_en": {
+          "name": "actualizado_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "actualizado_por": {
+          "name": "actualizado_por",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "eliminado_en": {
+          "name": "eliminado_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "eliminado_por": {
+          "name": "eliminado_por",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "alt_administradores_creado_por_alt_administradores_id_fk": {
+          "name": "alt_administradores_creado_por_alt_administradores_id_fk",
+          "tableFrom": "alt_administradores",
+          "tableTo": "alt_administradores",
+          "schemaTo": "alertas",
+          "columnsFrom": [
+            "creado_por"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "alt_administradores_actualizado_por_alt_administradores_id_fk": {
+          "name": "alt_administradores_actualizado_por_alt_administradores_id_fk",
+          "tableFrom": "alt_administradores",
+          "tableTo": "alt_administradores",
+          "schemaTo": "alertas",
+          "columnsFrom": [
+            "actualizado_por"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "alt_administradores_eliminado_por_alt_administradores_id_fk": {
+          "name": "alt_administradores_eliminado_por_alt_administradores_id_fk",
+          "tableFrom": "alt_administradores",
+          "tableTo": "alt_administradores",
+          "schemaTo": "alertas",
+          "columnsFrom": [
+            "eliminado_por"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "uq_alt_administradores_email": {
+          "name": "uq_alt_administradores_email",
+          "nullsNotDistinct": false,
+          "columns": [
+            "email"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "alertas.alt_alertas": {
+      "name": "alt_alertas",
+      "schema": "alertas",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "bigint",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "alt_alertas_id_seq",
+            "schema": "alertas",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "9223372036854775807",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "categoria_id": {
+          "name": "categoria_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "titulo": {
+          "name": "titulo",
+          "type": "varchar(200)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "descripcion": {
+          "name": "descripcion",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "nivel_severidad": {
+          "name": "nivel_severidad",
+          "type": "nivel_severidad_tipo",
+          "typeSchema": "alertas",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "estatus": {
+          "name": "estatus",
+          "type": "estatus_alerta_tipo",
+          "typeSchema": "alertas",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'borrador'"
+        },
+        "fecha_inicio": {
+          "name": "fecha_inicio",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "fecha_fin": {
+          "name": "fecha_fin",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "nivel_cobertura": {
+          "name": "nivel_cobertura",
+          "type": "nivel_cobertura_tipo",
+          "typeSchema": "alertas",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "zona_id": {
+          "name": "zona_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "centro_latitud": {
+          "name": "centro_latitud",
+          "type": "numeric(10, 7)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "centro_longitud": {
+          "name": "centro_longitud",
+          "type": "numeric(10, 7)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "radio_km": {
+          "name": "radio_km",
+          "type": "numeric(8, 3)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "poligono_zona": {
+          "name": "poligono_zona",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "acciones": {
+          "name": "acciones",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "imagen_url": {
+          "name": "imagen_url",
+          "type": "varchar(500)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "mapa_visible": {
+          "name": "mapa_visible",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "total_enviadas": {
+          "name": "total_enviadas",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "creado_en": {
+          "name": "creado_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "creado_por": {
+          "name": "creado_por",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "actualizado_en": {
+          "name": "actualizado_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "actualizado_por": {
+          "name": "actualizado_por",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "eliminado_en": {
+          "name": "eliminado_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "eliminado_por": {
+          "name": "eliminado_por",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "alt_alertas_categoria_id_cat_categorias_alerta_id_fk": {
+          "name": "alt_alertas_categoria_id_cat_categorias_alerta_id_fk",
+          "tableFrom": "alt_alertas",
+          "tableTo": "cat_categorias_alerta",
+          "schemaTo": "alertas",
+          "columnsFrom": [
+            "categoria_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "alt_alertas_zona_id_cat_zonas_geograficas_id_fk": {
+          "name": "alt_alertas_zona_id_cat_zonas_geograficas_id_fk",
+          "tableFrom": "alt_alertas",
+          "tableTo": "cat_zonas_geograficas",
+          "schemaTo": "alertas",
+          "columnsFrom": [
+            "zona_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "alt_alertas_creado_por_alt_administradores_id_fk": {
+          "name": "alt_alertas_creado_por_alt_administradores_id_fk",
+          "tableFrom": "alt_alertas",
+          "tableTo": "alt_administradores",
+          "schemaTo": "alertas",
+          "columnsFrom": [
+            "creado_por"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "alt_alertas_actualizado_por_alt_administradores_id_fk": {
+          "name": "alt_alertas_actualizado_por_alt_administradores_id_fk",
+          "tableFrom": "alt_alertas",
+          "tableTo": "alt_administradores",
+          "schemaTo": "alertas",
+          "columnsFrom": [
+            "actualizado_por"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "alt_alertas_eliminado_por_alt_administradores_id_fk": {
+          "name": "alt_alertas_eliminado_por_alt_administradores_id_fk",
+          "tableFrom": "alt_alertas",
+          "tableTo": "alt_administradores",
+          "schemaTo": "alertas",
+          "columnsFrom": [
+            "eliminado_por"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "alertas.alt_alertas_zonas": {
+      "name": "alt_alertas_zonas",
+      "schema": "alertas",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "bigint",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "alt_alertas_zonas_id_seq",
+            "schema": "alertas",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "9223372036854775807",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "alerta_id": {
+          "name": "alerta_id",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "zona_id": {
+          "name": "zona_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "creado_en": {
+          "name": "creado_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "creado_por": {
+          "name": "creado_por",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "eliminado_en": {
+          "name": "eliminado_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "eliminado_por": {
+          "name": "eliminado_por",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "alt_alertas_zonas_alerta_id_alt_alertas_id_fk": {
+          "name": "alt_alertas_zonas_alerta_id_alt_alertas_id_fk",
+          "tableFrom": "alt_alertas_zonas",
+          "tableTo": "alt_alertas",
+          "schemaTo": "alertas",
+          "columnsFrom": [
+            "alerta_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "alt_alertas_zonas_zona_id_cat_zonas_geograficas_id_fk": {
+          "name": "alt_alertas_zonas_zona_id_cat_zonas_geograficas_id_fk",
+          "tableFrom": "alt_alertas_zonas",
+          "tableTo": "cat_zonas_geograficas",
+          "schemaTo": "alertas",
+          "columnsFrom": [
+            "zona_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "alt_alertas_zonas_creado_por_alt_administradores_id_fk": {
+          "name": "alt_alertas_zonas_creado_por_alt_administradores_id_fk",
+          "tableFrom": "alt_alertas_zonas",
+          "tableTo": "alt_administradores",
+          "schemaTo": "alertas",
+          "columnsFrom": [
+            "creado_por"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "alt_alertas_zonas_eliminado_por_alt_administradores_id_fk": {
+          "name": "alt_alertas_zonas_eliminado_por_alt_administradores_id_fk",
+          "tableFrom": "alt_alertas_zonas",
+          "tableTo": "alt_administradores",
+          "schemaTo": "alertas",
+          "columnsFrom": [
+            "eliminado_por"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "uq_alt_alerta_zona": {
+          "name": "uq_alt_alerta_zona",
+          "nullsNotDistinct": false,
+          "columns": [
+            "alerta_id",
+            "zona_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "alertas.alt_notificaciones_enviadas": {
+      "name": "alt_notificaciones_enviadas",
+      "schema": "alertas",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "bigint",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "alt_notificaciones_enviadas_id_seq",
+            "schema": "alertas",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "9223372036854775807",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "alerta_id": {
+          "name": "alerta_id",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "actualizacion_id": {
+          "name": "actualizacion_id",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "usuario_id": {
+          "name": "usuario_id",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "estatus_envio": {
+          "name": "estatus_envio",
+          "type": "estatus_envio_tipo",
+          "typeSchema": "alertas",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'pendiente'"
+        },
+        "intento_numero": {
+          "name": "intento_numero",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "mensaje_error": {
+          "name": "mensaje_error",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "provider_message_id": {
+          "name": "provider_message_id",
+          "type": "varchar(300)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "latitud_envio": {
+          "name": "latitud_envio",
+          "type": "numeric(10, 7)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "longitud_envio": {
+          "name": "longitud_envio",
+          "type": "numeric(10, 7)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "enviada_en": {
+          "name": "enviada_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "leida_en": {
+          "name": "leida_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "creado_en": {
+          "name": "creado_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "alt_notificaciones_enviadas_alerta_id_alt_alertas_id_fk": {
+          "name": "alt_notificaciones_enviadas_alerta_id_alt_alertas_id_fk",
+          "tableFrom": "alt_notificaciones_enviadas",
+          "tableTo": "alt_alertas",
+          "schemaTo": "alertas",
+          "columnsFrom": [
+            "alerta_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "alt_notificaciones_enviadas_actualizacion_id_alt_actualizaciones_alerta_id_fk": {
+          "name": "alt_notificaciones_enviadas_actualizacion_id_alt_actualizaciones_alerta_id_fk",
+          "tableFrom": "alt_notificaciones_enviadas",
+          "tableTo": "alt_actualizaciones_alerta",
+          "schemaTo": "alertas",
+          "columnsFrom": [
+            "actualizacion_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "alt_notificaciones_enviadas_usuario_id_alt_usuarios_id_fk": {
+          "name": "alt_notificaciones_enviadas_usuario_id_alt_usuarios_id_fk",
+          "tableFrom": "alt_notificaciones_enviadas",
+          "tableTo": "alt_usuarios",
+          "schemaTo": "alertas",
+          "columnsFrom": [
+            "usuario_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "alertas.alt_usuarios": {
+      "name": "alt_usuarios",
+      "schema": "alertas",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "bigint",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "alt_usuarios_id_seq",
+            "schema": "alertas",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "9223372036854775807",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "imei": {
+          "name": "imei",
+          "type": "varchar(20)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "device_id": {
+          "name": "device_id",
+          "type": "varchar(200)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "token_push": {
+          "name": "token_push",
+          "type": "varchar(500)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "plataforma": {
+          "name": "plataforma",
+          "type": "plataforma_tipo",
+          "typeSchema": "alertas",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "version_app": {
+          "name": "version_app",
+          "type": "varchar(20)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "modelo_dispositivo": {
+          "name": "modelo_dispositivo",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sistema_operativo": {
+          "name": "sistema_operativo",
+          "type": "varchar(60)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "latitud": {
+          "name": "latitud",
+          "type": "numeric(10, 7)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "longitud": {
+          "name": "longitud",
+          "type": "numeric(10, 7)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "precision_metros": {
+          "name": "precision_metros",
+          "type": "numeric(8, 2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ubicacion_actualizada_en": {
+          "name": "ubicacion_actualizada_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "codigo_postal": {
+          "name": "codigo_postal",
+          "type": "varchar(10)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "notif_activas": {
+          "name": "notif_activas",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "gps_activo": {
+          "name": "gps_activo",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "notif_meteorologicas": {
+          "name": "notif_meteorologicas",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "notif_ultima_hora": {
+          "name": "notif_ultima_hora",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "notif_vialidad": {
+          "name": "notif_vialidad",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "notif_servicios": {
+          "name": "notif_servicios",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "silencio_inicio": {
+          "name": "silencio_inicio",
+          "type": "time",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "silencio_fin": {
+          "name": "silencio_fin",
+          "type": "time",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "severidad_minima": {
+          "name": "severidad_minima",
+          "type": "nivel_severidad_tipo",
+          "typeSchema": "alertas",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'informativa'"
+        },
+        "creado_en": {
+          "name": "creado_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "actualizado_en": {
+          "name": "actualizado_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "eliminado_en": {
+          "name": "eliminado_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "idx_alt_usuarios_codigo_postal": {
+          "name": "idx_alt_usuarios_codigo_postal",
+          "columns": [
+            {
+              "expression": "codigo_postal",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "uq_alt_usuarios_device_id": {
+          "name": "uq_alt_usuarios_device_id",
+          "nullsNotDistinct": false,
+          "columns": [
+            "device_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "alertas.alt_usuarios_zonas": {
+      "name": "alt_usuarios_zonas",
+      "schema": "alertas",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "bigint",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "alt_usuarios_zonas_id_seq",
+            "schema": "alertas",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "9223372036854775807",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "usuario_id": {
+          "name": "usuario_id",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "zona_id": {
+          "name": "zona_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "activo": {
+          "name": "activo",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "creado_en": {
+          "name": "creado_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "actualizado_en": {
+          "name": "actualizado_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "eliminado_en": {
+          "name": "eliminado_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "alt_usuarios_zonas_usuario_id_alt_usuarios_id_fk": {
+          "name": "alt_usuarios_zonas_usuario_id_alt_usuarios_id_fk",
+          "tableFrom": "alt_usuarios_zonas",
+          "tableTo": "alt_usuarios",
+          "schemaTo": "alertas",
+          "columnsFrom": [
+            "usuario_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "alt_usuarios_zonas_zona_id_cat_zonas_geograficas_id_fk": {
+          "name": "alt_usuarios_zonas_zona_id_cat_zonas_geograficas_id_fk",
+          "tableFrom": "alt_usuarios_zonas",
+          "tableTo": "cat_zonas_geograficas",
+          "schemaTo": "alertas",
+          "columnsFrom": [
+            "zona_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "uq_alt_usuario_zona": {
+          "name": "uq_alt_usuario_zona",
+          "nullsNotDistinct": false,
+          "columns": [
+            "usuario_id",
+            "zona_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "auditoria.aud_auditoria_cambios": {
+      "name": "aud_auditoria_cambios",
+      "schema": "auditoria",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "bigint",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "aud_auditoria_cambios_id_seq",
+            "schema": "auditoria",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "9223372036854775807",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "tabla": {
+          "name": "tabla",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "operacion": {
+          "name": "operacion",
+          "type": "char(6)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "registro_id": {
+          "name": "registro_id",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "datos_anteriores": {
+          "name": "datos_anteriores",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "datos_nuevos": {
+          "name": "datos_nuevos",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "campos_modificados": {
+          "name": "campos_modificados",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "administrador_id": {
+          "name": "administrador_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "usuario_id": {
+          "name": "usuario_id",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ip_origen": {
+          "name": "ip_origen",
+          "type": "inet",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "request_id": {
+          "name": "request_id",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "creado_en": {
+          "name": "creado_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "auditoria.aud_bitacora_errores": {
+      "name": "aud_bitacora_errores",
+      "schema": "auditoria",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "bigint",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "aud_bitacora_errores_id_seq",
+            "schema": "auditoria",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "9223372036854775807",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "nivel": {
+          "name": "nivel",
+          "type": "nivel_log_tipo",
+          "typeSchema": "alertas",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'error'"
+        },
+        "modulo": {
+          "name": "modulo",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "operacion": {
+          "name": "operacion",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "mensaje": {
+          "name": "mensaje",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "detalle": {
+          "name": "detalle",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "codigo_error": {
+          "name": "codigo_error",
+          "type": "varchar(60)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "usuario_id": {
+          "name": "usuario_id",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "administrador_id": {
+          "name": "administrador_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "entidad": {
+          "name": "entidad",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "entidad_id": {
+          "name": "entidad_id",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ip_origen": {
+          "name": "ip_origen",
+          "type": "inet",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "request_id": {
+          "name": "request_id",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "creado_en": {
+          "name": "creado_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "alertas.cat_categorias_alerta": {
+      "name": "cat_categorias_alerta",
+      "schema": "alertas",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "cat_categorias_alerta_id_seq",
+            "schema": "alertas",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "nombre": {
+          "name": "nombre",
+          "type": "varchar(120)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "slug": {
+          "name": "slug",
+          "type": "varchar(80)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "icono": {
+          "name": "icono",
+          "type": "varchar(120)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "color_hex": {
+          "name": "color_hex",
+          "type": "char(7)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'#E24B4A'"
+        },
+        "descripcion": {
+          "name": "descripcion",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "activo": {
+          "name": "activo",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "creado_en": {
+          "name": "creado_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "creado_por": {
+          "name": "creado_por",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "actualizado_en": {
+          "name": "actualizado_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "actualizado_por": {
+          "name": "actualizado_por",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "eliminado_en": {
+          "name": "eliminado_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "eliminado_por": {
+          "name": "eliminado_por",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "cat_categorias_alerta_creado_por_alt_administradores_id_fk": {
+          "name": "cat_categorias_alerta_creado_por_alt_administradores_id_fk",
+          "tableFrom": "cat_categorias_alerta",
+          "tableTo": "alt_administradores",
+          "schemaTo": "alertas",
+          "columnsFrom": [
+            "creado_por"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "cat_categorias_alerta_actualizado_por_alt_administradores_id_fk": {
+          "name": "cat_categorias_alerta_actualizado_por_alt_administradores_id_fk",
+          "tableFrom": "cat_categorias_alerta",
+          "tableTo": "alt_administradores",
+          "schemaTo": "alertas",
+          "columnsFrom": [
+            "actualizado_por"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "cat_categorias_alerta_eliminado_por_alt_administradores_id_fk": {
+          "name": "cat_categorias_alerta_eliminado_por_alt_administradores_id_fk",
+          "tableFrom": "cat_categorias_alerta",
+          "tableTo": "alt_administradores",
+          "schemaTo": "alertas",
+          "columnsFrom": [
+            "eliminado_por"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "uq_cat_categorias_slug": {
+          "name": "uq_cat_categorias_slug",
+          "nullsNotDistinct": false,
+          "columns": [
+            "slug"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "alertas.cat_zonas_geograficas": {
+      "name": "cat_zonas_geograficas",
+      "schema": "alertas",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "cat_zonas_geograficas_id_seq",
+            "schema": "alertas",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "nombre": {
+          "name": "nombre",
+          "type": "varchar(200)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tipo": {
+          "name": "tipo",
+          "type": "tipo_zona_tipo",
+          "typeSchema": "alertas",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "clave_pais": {
+          "name": "clave_pais",
+          "type": "char(2)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'MX'"
+        },
+        "clave_estado": {
+          "name": "clave_estado",
+          "type": "char(2)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "clave_municipio": {
+          "name": "clave_municipio",
+          "type": "varchar(3)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "codigo_postal": {
+          "name": "codigo_postal",
+          "type": "varchar(10)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "centro_latitud": {
+          "name": "centro_latitud",
+          "type": "numeric(10, 7)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "centro_longitud": {
+          "name": "centro_longitud",
+          "type": "numeric(10, 7)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "radio_km": {
+          "name": "radio_km",
+          "type": "numeric(8, 3)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "poligono": {
+          "name": "poligono",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "activo": {
+          "name": "activo",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "creado_en": {
+          "name": "creado_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "creado_por": {
+          "name": "creado_por",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "actualizado_en": {
+          "name": "actualizado_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "actualizado_por": {
+          "name": "actualizado_por",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "eliminado_en": {
+          "name": "eliminado_en",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "eliminado_por": {
+          "name": "eliminado_por",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "cat_zonas_geograficas_creado_por_alt_administradores_id_fk": {
+          "name": "cat_zonas_geograficas_creado_por_alt_administradores_id_fk",
+          "tableFrom": "cat_zonas_geograficas",
+          "tableTo": "alt_administradores",
+          "schemaTo": "alertas",
+          "columnsFrom": [
+            "creado_por"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "cat_zonas_geograficas_actualizado_por_alt_administradores_id_fk": {
+          "name": "cat_zonas_geograficas_actualizado_por_alt_administradores_id_fk",
+          "tableFrom": "cat_zonas_geograficas",
+          "tableTo": "alt_administradores",
+          "schemaTo": "alertas",
+          "columnsFrom": [
+            "actualizado_por"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "cat_zonas_geograficas_eliminado_por_alt_administradores_id_fk": {
+          "name": "cat_zonas_geograficas_eliminado_por_alt_administradores_id_fk",
+          "tableFrom": "cat_zonas_geograficas",
+          "tableTo": "alt_administradores",
+          "schemaTo": "alertas",
+          "columnsFrom": [
+            "eliminado_por"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {
+    "alertas.estatus_alerta_tipo": {
+      "name": "estatus_alerta_tipo",
+      "schema": "alertas",
+      "values": [
+        "borrador",
+        "activa",
+        "desactivada",
+        "expirada",
+        "cancelada"
+      ]
+    },
+    "alertas.estatus_envio_tipo": {
+      "name": "estatus_envio_tipo",
+      "schema": "alertas",
+      "values": [
+        "pendiente",
+        "enviada",
+        "fallida",
+        "rebotada"
+      ]
+    },
+    "alertas.nivel_cobertura_tipo": {
+      "name": "nivel_cobertura_tipo",
+      "schema": "alertas",
+      "values": [
+        "pais",
+        "estado",
+        "municipio",
+        "colonia",
+        "codigo_postal",
+        "zona_personalizada"
+      ]
+    },
+    "alertas.nivel_log_tipo": {
+      "name": "nivel_log_tipo",
+      "schema": "alertas",
+      "values": [
+        "debug",
+        "info",
+        "warning",
+        "error",
+        "critical"
+      ]
+    },
+    "alertas.nivel_severidad_tipo": {
+      "name": "nivel_severidad_tipo",
+      "schema": "alertas",
+      "values": [
+        "preventiva",
+        "emergencia",
+        "informativa"
+      ]
+    },
+    "alertas.plataforma_tipo": {
+      "name": "plataforma_tipo",
+      "schema": "alertas",
+      "values": [
+        "android",
+        "ios",
+        "huawei"
+      ]
+    },
+    "alertas.tipo_zona_tipo": {
+      "name": "tipo_zona_tipo",
+      "schema": "alertas",
+      "values": [
+        "pais",
+        "estado",
+        "municipio",
+        "colonia",
+        "codigo_postal",
+        "poligono_custom"
+      ]
+    }
+  },
+  "schemas": {
+    "alertas": "alertas",
+    "auditoria": "auditoria"
+  },
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}
