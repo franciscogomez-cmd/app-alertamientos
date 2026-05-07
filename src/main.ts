@@ -5,7 +5,9 @@ import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, {
+    logger: ['log', 'warn', 'error', 'debug'],
+  });
 
   // Prefijo global para todas las rutas de la API
   app.setGlobalPrefix('api');

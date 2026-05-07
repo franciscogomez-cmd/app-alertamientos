@@ -163,6 +163,8 @@ export class OnesignalService {
 
       const data = await response.json();
 
+      this.logger.debug(`[updateDeviceTags] HTTP ${response.status} | Response: ${JSON.stringify(data)}`);
+
       if (!response.ok) {
         this.logger.error(
           `Error actualizando tags: ${response.status} — ${JSON.stringify(data)}`,

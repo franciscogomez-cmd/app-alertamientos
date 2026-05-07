@@ -48,7 +48,7 @@ export class UsuariosService {
           isNull(schema.altUsuarios.eliminadoEn),
         ),
       );
-
+    console.log("creando usuario")
     if (existing) {
       throw new ConflictException(
         `Ya existe un usuario registrado con deviceId "${dto.deviceId}".`,
@@ -213,8 +213,9 @@ export class UsuariosService {
   // ═══════════════════════════════════════════════════════════════════════════
 
   async update(id: number, dto: UpdateUsuarioDto) {
+    this.logger.debug(`[update] Iniciando actualización usuario ${id} | DTO: ${JSON.stringify(dto)}`);
     await this.findOne(id);
-
+    console.log(`[update] Iniciando actualización usuario ${id} | DTO: ${JSON.stringify(dto)}`)
     const data = dto as Partial<CreateUsuarioDto>;
     const updateValues: Record<string, any> = {};
 
@@ -248,8 +249,11 @@ export class UsuariosService {
     if (data.severidadMinima !== undefined) updateValues.severidadMinima = data.severidadMinima;
 
     if (Object.keys(updateValues).length === 0) {
+      this.logger.debug(`[update] Sin campos a actualizar para usuario ${id}, retornando estado actual`);
       return this.findOne(id);
     }
+
+    this.logger.debug(`[update] Campos a actualizar para usuario ${id}: ${JSON.stringify(updateValues)}`);
 
     const [updated] = await this.db
       .update(schema.altUsuarios)
@@ -257,9 +261,15 @@ export class UsuariosService {
       .where(eq(schema.altUsuarios.id, id))
       .returning();
 
+    this.logger.debug(`[update] DB actualizado OK para usuario ${id} | tokenPush: ${updated.tokenPush ?? 'null'}`);
+
     // ── Sincronizar tags en OneSignal si tiene tokenPush ─────────────────
     if (updated.tokenPush) {
-      this.syncTagsToOneSignal(updated.tokenPush, this.buildTagsPayload(updated));
+      const tags = this.buildTagsPayload(updated);
+      this.logger.debug(`[update] Tags a sincronizar con OneSignal: ${JSON.stringify(tags)}`);
+      this.syncTagsToOneSignal(updated.tokenPush, tags);
+    } else {
+      this.logger.warn(`[update] Usuario ${id} no tiene tokenPush, se omite sincronización con OneSignal`);
     }
 
     return updated;
@@ -285,9 +295,12 @@ export class UsuariosService {
   // ═══════════════════════════════════════════════════════════════════════════
 
   async updateUbicacion(id: number, dto: UpdateUbicacionDto) {
+    this.logger.debug(`[updateUbicacion] Iniciando | usuario ${id} | DTO: ${JSON.stringify(dto)}`);
     await this.findOne(id);
 
+    this.logger.debug(`[updateUbicacion] Validando coordenadas lat=${dto.latitud} lon=${dto.longitud}`);
     if (!isWithinNayarit(dto.latitud, dto.longitud)) {
+      this.logger.warn(`[updateUbicacion] Coordenadas fuera de Nayarit para usuario ${id}: lat=${dto.latitud} lon=${dto.longitud}`);
       throw new BadRequestException(
         'El usuario se encuentra fuera del estado de Nayarit. No se actualizará su ubicación.',
       );
@@ -304,9 +317,15 @@ export class UsuariosService {
       .where(eq(schema.altUsuarios.id, id))
       .returning();
 
+    this.logger.debug(`[updateUbicacion] DB actualizado OK para usuario ${id} | tokenPush: ${updated.tokenPush ?? 'null'}`);
+
     // ── Sincronizar tags en OneSignal ───────────────────────────────────
     if (updated.tokenPush) {
-      this.syncTagsToOneSignal(updated.tokenPush, this.buildTagsPayload(updated));
+      const tags = this.buildTagsPayload(updated);
+      this.logger.debug(`[updateUbicacion] Tags a sincronizar con OneSignal: ${JSON.stringify(tags)}`);
+      this.syncTagsToOneSignal(updated.tokenPush, tags);
+    } else {
+      this.logger.warn(`[updateUbicacion] Usuario ${id} no tiene tokenPush, se omite sincronización con OneSignal`);
     }
 
     return updated;
@@ -483,11 +502,20 @@ export class UsuariosService {
     tokenPush: string,
     tags: Record<string, string | number | boolean>,
   ) {
-    this.onesignal.updateDeviceTags(tokenPush, tags).catch((err) => {
-      this.logger.error(
-        `Error sincronizando tags de OneSignal para ${tokenPush}: ${(err as Error).message}`,
-      );
-    });
+    this.onesignal
+      .updateDeviceTags(tokenPush, tags)
+      .then((result) => {
+        if (result.success) {
+          this.logger.log(`[syncTags] OneSignal tags actualizados OK para ${tokenPush}`);
+        } else {
+          this.logger.error(`[syncTags] OneSignal rechazó la actualización de tags para ${tokenPush} (success=false)`);
+        }
+      })
+      .catch((err) => {
+        this.logger.error(
+          `[syncTags] Excepción al sincronizar tags de OneSignal para ${tokenPush}: ${(err as Error).message}`,
+        );
+      });
   }
 
   /**
