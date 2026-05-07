@@ -1,5 +1,5 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { and, eq, inArray, isNotNull, isNull, sql } from 'drizzle-orm';
+import { and, eq, inArray, isNotNull, isNull, or, sql } from 'drizzle-orm';
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 
 import { DRIZZLE } from '../database/database.constants';
@@ -217,11 +217,11 @@ export class NotificacionesService {
       .where(eq(schema.altAlertas.id, alertaId));
 
     this.logger.log(
-      `Push enviado para alerta ${alertaId}: ${onesignalResponse.recipients} destinatarios`,
+      `Push enviado para alerta ${alertaId}: ${recipients} destinatarios`,
     );
 
     return {
-      enviadas: onesignalResponse.recipients,
+      enviadas: recipients,
       onesignalId: onesignalResponse.id,
     };
   }
@@ -399,72 +399,91 @@ export class NotificacionesService {
           ),
         );
 
+      // Clasificar zonas en memoria — sin queries por zona
+      type ZonaRadio = { lat: number; lon: number; radio: number };
+      type ZonaPoligono = {
+        id: number;
+        poligono: unknown;
+        bbox: NonNullable<ReturnType<typeof calcularBboxGeojson>>;
+      };
+
+      const zonasRadio: ZonaRadio[] = [];
+      const zonasPoligono: ZonaPoligono[] = [];
+
       for (const zona of zonasConGeometria) {
-        // Radio Haversine en SQL contra la geometría de la zona del catálogo
         if (zona.centroLatitud && zona.centroLongitud && zona.radioKm) {
           const lat = parseFloat(zona.centroLatitud);
           const lon = parseFloat(zona.centroLongitud);
           const radio = parseFloat(zona.radioKm);
-
           if (!isNaN(lat) && !isNaN(lon) && !isNaN(radio)) {
-            const usuariosRadioZona = await this.db
-              .select(camposUsuario)
-              .from(schema.altUsuarios)
-              .where(
-                and(
-                  condicionBase,
-                  isNotNull(schema.altUsuarios.latitud),
-                  isNotNull(schema.altUsuarios.longitud),
-                  sql`
-                    6371 * acos(
-                      GREATEST(-1, LEAST(1,
-                        cos(radians(${lat})) * cos(radians(${schema.altUsuarios.latitud}::numeric))
-                        * cos(radians(${schema.altUsuarios.longitud}::numeric) - radians(${lon}))
-                        + sin(radians(${lat})) * sin(radians(${schema.altUsuarios.latitud}::numeric))
-                      ))
-                    ) <= ${radio}
-                  `,
-                ),
-              );
-            usuariosRadioZona.forEach((u) => mapaAfectados.set(u.id, u));
+            zonasRadio.push({ lat, lon, radio });
           }
         }
-
-        // Polígono de la zona del catálogo (misma lógica que poligonoZona de la alerta)
         if (zona.poligono) {
           const bbox = calcularBboxGeojson(zona.poligono);
           if (bbox) {
-            const { minLat, maxLat, minLon, maxLon } = bbox;
-            const candidatos = await this.db
-              .select(camposUsuario)
-              .from(schema.altUsuarios)
-              .where(
-                and(
-                  condicionBase,
-                  isNotNull(schema.altUsuarios.latitud),
-                  isNotNull(schema.altUsuarios.longitud),
-                  sql`${schema.altUsuarios.latitud}::numeric BETWEEN ${minLat} AND ${maxLat}`,
-                  sql`${schema.altUsuarios.longitud}::numeric BETWEEN ${minLon} AND ${maxLon}`,
-                ),
-              );
-
-            candidatos
-              .filter((u) => {
-                const uLat = parseFloat(u.latitud!);
-                const uLon = parseFloat(u.longitud!);
-                return (
-                  !isNaN(uLat) &&
-                  !isNaN(uLon) &&
-                  puntoDentroDePoligono(uLat, uLon, zona.poligono)
-                );
-              })
-              .forEach((u) => mapaAfectados.set(u.id, u));
+            zonasPoligono.push({ id: zona.id, poligono: zona.poligono, bbox });
           } else {
             this.logger.warn(
               `Zona ${zona.id}: poligono con formato GeoJSON inválido, se omite.`,
             );
           }
         }
+      }
+
+      // Una sola query con OR de todas las condiciones Haversine
+      if (zonasRadio.length > 0) {
+        const condicionesRadio = zonasRadio.map(({ lat, lon, radio }) =>
+          sql`6371 * acos(GREATEST(-1, LEAST(1,
+            cos(radians(${lat})) * cos(radians(${schema.altUsuarios.latitud}::numeric))
+            * cos(radians(${schema.altUsuarios.longitud}::numeric) - radians(${lon}))
+            + sin(radians(${lat})) * sin(radians(${schema.altUsuarios.latitud}::numeric))
+          ))) <= ${radio}`,
+        );
+        const usuariosRadioZonas = await this.db
+          .select(camposUsuario)
+          .from(schema.altUsuarios)
+          .where(
+            and(
+              condicionBase,
+              isNotNull(schema.altUsuarios.latitud),
+              isNotNull(schema.altUsuarios.longitud),
+              or(...condicionesRadio),
+            ),
+          );
+        usuariosRadioZonas.forEach((u) => mapaAfectados.set(u.id, u));
+      }
+
+      // Una sola query con bbox unión de todos los polígonos, ray-casting exacto en TS
+      if (zonasPoligono.length > 0) {
+        const minLat = Math.min(...zonasPoligono.map((z) => z.bbox.minLat));
+        const maxLat = Math.max(...zonasPoligono.map((z) => z.bbox.maxLat));
+        const minLon = Math.min(...zonasPoligono.map((z) => z.bbox.minLon));
+        const maxLon = Math.max(...zonasPoligono.map((z) => z.bbox.maxLon));
+
+        const candidatos = await this.db
+          .select(camposUsuario)
+          .from(schema.altUsuarios)
+          .where(
+            and(
+              condicionBase,
+              isNotNull(schema.altUsuarios.latitud),
+              isNotNull(schema.altUsuarios.longitud),
+              sql`${schema.altUsuarios.latitud}::numeric BETWEEN ${minLat} AND ${maxLat}`,
+              sql`${schema.altUsuarios.longitud}::numeric BETWEEN ${minLon} AND ${maxLon}`,
+            ),
+          );
+
+        candidatos
+          .filter((u) => {
+            const uLat = parseFloat(u.latitud!);
+            const uLon = parseFloat(u.longitud!);
+            if (isNaN(uLat) || isNaN(uLon)) return false;
+            return zonasPoligono.some(({ poligono }) =>
+              puntoDentroDePoligono(uLat, uLon, poligono),
+            );
+          })
+          .forEach((u) => mapaAfectados.set(u.id, u));
       }
     }
 

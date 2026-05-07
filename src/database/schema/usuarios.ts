@@ -6,6 +6,7 @@ import {
   bigint,
   boolean,
   decimal,
+  index,
   time,
   timestamp,
   varchar,
@@ -54,7 +55,9 @@ export const altUsuarios = alertasSchema.table("alt_usuarios", {
   creadoEn: timestamp("creado_en", { withTimezone: true }).notNull().defaultNow(),
   actualizadoEn: timestamp("actualizado_en", { withTimezone: true }).notNull().defaultNow(),
   eliminadoEn: timestamp("eliminado_en", { withTimezone: true }),
-});
+}, (t) => [
+  index("idx_alt_usuarios_codigo_postal").on(t.codigoPostal),
+]);
 
 export type Usuario = typeof altUsuarios.$inferSelect;
 export type NuevoUsuario = typeof altUsuarios.$inferInsert;
