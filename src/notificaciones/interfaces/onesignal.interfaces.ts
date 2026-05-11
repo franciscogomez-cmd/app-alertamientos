@@ -5,7 +5,9 @@
 export interface OneSignalNotificationPayload {
   /** Segmentos de audiencia (e.g. 'Subscribed Users') */
   included_segments?: string[];
-  /** IDs de suscripción específicos */
+  /** Player IDs específicos (legacy — compatible con todos los SDK versions) */
+  include_player_ids?: string[];
+  /** Subscription IDs específicos (SDK v5+) */
   include_subscription_ids?: string[];
   /** Filtros avanzados */
   filters?: OneSignalFilter[];

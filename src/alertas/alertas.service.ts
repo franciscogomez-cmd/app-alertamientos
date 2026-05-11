@@ -10,6 +10,7 @@ import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import { DRIZZLE } from '../database/database.constants';
 import * as schema from '../database/schema';
 import { NotificacionesService } from '../notificaciones/notificaciones.service';
+import { calcularBboxGeojson, puntoDentroDePoligono } from '../shared/geo.utils';
 import { StorageService } from '../storage/storage.service';
 import {
   CreateAlertaDto,
@@ -668,9 +669,59 @@ export class AlertasService {
     const userLat = usuario.latitud ? parseFloat(usuario.latitud) : null;
     const userLon = usuario.longitud ? parseFloat(usuario.longitud) : null;
 
-    // 9. Filtro geográfico
+    // 9. Cargar geometría de todas las zonas involucradas (criterio GPS dentro de zona)
+    const todasZonaIds = new Set<number>();
+    alertas.forEach((a) => { if (a.zonaId != null) todasZonaIds.add(a.zonaId); });
+    for (const zonaIds of zonasDeAlertas.values()) zonaIds.forEach((z) => todasZonaIds.add(z));
+
+    const geometriasZonas = new Map<number, {
+      centroLatitud: string | null;
+      centroLongitud: string | null;
+      radioKm: string | null;
+      poligono: unknown;
+    }>();
+
+    if (todasZonaIds.size > 0) {
+      const zonas = await this.db
+        .select({
+          id: schema.catZonasGeograficas.id,
+          centroLatitud: schema.catZonasGeograficas.centroLatitud,
+          centroLongitud: schema.catZonasGeograficas.centroLongitud,
+          radioKm: schema.catZonasGeograficas.radioKm,
+          poligono: schema.catZonasGeograficas.poligono,
+        })
+        .from(schema.catZonasGeograficas)
+        .where(
+          and(
+            inArray(schema.catZonasGeograficas.id, [...todasZonaIds]),
+            isNull(schema.catZonasGeograficas.eliminadoEn),
+          ),
+        );
+      zonas.forEach((z) => geometriasZonas.set(z.id, z));
+    }
+
+    // Helper: ¿el GPS del usuario cae dentro de la geometría de esta zona?
+    const usuarioEnZona = (zonaId: number): boolean => {
+      if (userLat === null || userLon === null) return false;
+      const zona = geometriasZonas.get(zonaId);
+      if (!zona) return false;
+      if (zona.centroLatitud && zona.centroLongitud && zona.radioKm) {
+        const dist = this.haversineKm(
+          userLat, userLon,
+          parseFloat(zona.centroLatitud),
+          parseFloat(zona.centroLongitud),
+        );
+        if (dist <= parseFloat(zona.radioKm)) return true;
+      }
+      if (zona.poligono && puntoDentroDePoligono(userLat, userLon, zona.poligono)) return true;
+      return false;
+    };
+
+    // 10. Filtro geográfico
     return alertas.filter((alerta) => {
       if (alerta.nivelCobertura === 'pais') return true;
+
+      // Suscripción explícita o CP coincidente
       if (alerta.zonaId != null && zonaIdsUsuario.has(alerta.zonaId)) return true;
       if (alerta.zonaId != null && zonaIdsConCp.has(alerta.zonaId)) return true;
 
@@ -678,6 +729,11 @@ export class AlertasService {
       if (zonasAlerta.some((z) => zonaIdsUsuario.has(z))) return true;
       if (zonasAlerta.some((z) => zonaIdsConCp.has(z))) return true;
 
+      // GPS del usuario dentro de la geometría de la zona
+      if (alerta.zonaId != null && usuarioEnZona(alerta.zonaId)) return true;
+      if (zonasAlerta.some((z) => usuarioEnZona(z))) return true;
+
+      // GPS del usuario dentro del radio directo de la alerta
       if (
         userLat !== null &&
         userLon !== null &&
@@ -691,6 +747,11 @@ export class AlertasService {
           parseFloat(alerta.centroLongitud),
         );
         if (dist <= parseFloat(alerta.radioKm)) return true;
+      }
+
+      // GPS del usuario dentro del polígono directo de la alerta
+      if (userLat !== null && userLon !== null && alerta.poligonoZona) {
+        if (puntoDentroDePoligono(userLat, userLon, alerta.poligonoZona)) return true;
       }
 
       return false;
