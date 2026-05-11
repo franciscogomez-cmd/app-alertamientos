@@ -180,7 +180,7 @@ export class NotificacionesService {
         headings,
         contents,
         data,
-        alerta.imagenUrl ?? undefined,
+        undefined,
       );
     } catch (error) {
       this.logger.error(
