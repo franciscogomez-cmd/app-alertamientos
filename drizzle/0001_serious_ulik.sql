@@ -1,0 +1,1 @@
+ALTER TABLE "alertas"."alt_usuarios" ADD COLUMN "token_push_valido" boolean DEFAULT true NOT NULL;

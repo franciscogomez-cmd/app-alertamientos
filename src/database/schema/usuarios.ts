@@ -44,6 +44,9 @@ export const altUsuarios = alertasSchema.table("alt_usuarios", {
   notifVialidad: boolean("notif_vialidad").notNull().default(true),
   notifServicios: boolean("notif_servicios").notNull().default(true),
 
+  // Estado del token push
+  tokenPushValido: boolean("token_push_valido").notNull().default(true),
+
   // Horario silencioso
   silencioInicio: time("silencio_inicio"),
   silencioFin: time("silencio_fin"),

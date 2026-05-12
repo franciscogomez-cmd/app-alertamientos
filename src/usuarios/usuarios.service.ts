@@ -233,7 +233,10 @@ export class UsuariosService {
 
     if (data.imei !== undefined) updateValues.imei = data.imei;
     if (data.deviceId !== undefined) updateValues.deviceId = data.deviceId;
-    if (data.tokenPush !== undefined) updateValues.tokenPush = data.tokenPush;
+    if (data.tokenPush !== undefined) {
+      updateValues.tokenPush = data.tokenPush;
+      updateValues.tokenPushValido = true;
+    }
     if (data.plataforma !== undefined) updateValues.plataforma = data.plataforma;
     if (data.versionApp !== undefined) updateValues.versionApp = data.versionApp;
     if (data.modeloDispositivo !== undefined) updateValues.modeloDispositivo = data.modeloDispositivo;
@@ -508,7 +511,7 @@ export class UsuariosService {
 
   /**
    * Sincroniza tags en OneSignal de forma asíncrona (fire-and-forget).
-   * No bloquea la respuesta al cliente si falla.
+   * Marca tokenPushValido=false en BD cuando OneSignal responde "No user found".
    */
   private syncTagsToOneSignal(
     tokenPush: string,
@@ -516,11 +519,16 @@ export class UsuariosService {
   ) {
     this.onesignal
       .updateDeviceTags(tokenPush, tags)
-      .then((result) => {
+      .then(async (result) => {
         if (result.success) {
           this.logger.log(`[syncTags] OneSignal tags actualizados OK para ${tokenPush}`);
         } else {
           this.logger.error(`[syncTags] OneSignal rechazó la actualización de tags para ${tokenPush} (success=false)`);
+          await this.db
+            .update(schema.altUsuarios)
+            .set({ tokenPushValido: false })
+            .where(and(eq(schema.altUsuarios.tokenPush, tokenPush), isNull(schema.altUsuarios.eliminadoEn)));
+          this.logger.warn(`[syncTags] tokenPushValido=false marcado en BD para tokenPush ${tokenPush}`);
         }
       })
       .catch((err) => {
