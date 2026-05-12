@@ -1,11 +1,11 @@
 /**
- * Interfaces para la API REST de OneSignal v1.
+ * Interfaces para la API REST de OneSignal (User Model / SDK v5+).
  */
 
 export interface OneSignalNotificationPayload {
   /** Segmentos de audiencia (e.g. 'Subscribed Users') */
   included_segments?: string[];
-  /** Player IDs específicos (legacy — compatible con todos los SDK versions) */
+  /** Player IDs específicos (legacy — NO compatible con SDK v5 User Model) */
   include_player_ids?: string[];
   /** Subscription IDs específicos (SDK v5+) */
   include_subscription_ids?: string[];

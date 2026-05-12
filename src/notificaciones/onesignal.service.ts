@@ -7,7 +7,7 @@ import {
 } from './interfaces';
 
 /**
- * Servicio wrapper para la API REST de OneSignal.
+ * Servicio wrapper para la API REST de OneSignal (User Model / SDK v5+).
  * Usa fetch nativo (Node 18+) — sin dependencias externas.
  */
 @Injectable()
@@ -15,11 +15,15 @@ export class OnesignalService {
   private readonly logger = new Logger(OnesignalService.name);
   private readonly appId: string;
   private readonly restApiKey: string;
-  private readonly baseUrl = 'https://onesignal.com/api/v1';
+  private readonly baseUrl = 'https://api.onesignal.com';
 
   constructor(private readonly config: ConfigService) {
     this.appId = this.config.getOrThrow<string>('ONESIGNAL_APP_ID');
     this.restApiKey = this.config.getOrThrow<string>('ONESIGNAL_REST_API_KEY');
+  }
+
+  private get authHeader(): string {
+    return `Key ${this.restApiKey}`;
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -45,7 +49,7 @@ export class OnesignalService {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json; charset=utf-8',
-          Authorization: `Basic ${this.restApiKey}`,
+          Authorization: this.authHeader,
         },
         body: JSON.stringify(body),
       });
@@ -119,7 +123,7 @@ export class OnesignalService {
     const response = await fetch(
       `${this.baseUrl}/notifications/${notificationId}?app_id=${this.appId}`,
       {
-        headers: { Authorization: `Basic ${this.restApiKey}` },
+        headers: { Authorization: this.authHeader },
       },
     );
 
@@ -127,14 +131,14 @@ export class OnesignalService {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // GESTIÓN DE DISPOSITIVOS / TAGS
+  // GESTIÓN DE DISPOSITIVOS / TAGS  (User Model API)
   // ═══════════════════════════════════════════════════════════════════════════
 
   /**
-   * Actualiza los tags de un dispositivo (player/subscription) en OneSignal.
-   * Los tags permiten segmentar usuarios para envíos dirigidos.
+   * Actualiza los tags de un usuario en OneSignal usando el User Model API.
+   * Compatible con SDK v5+ (react-native-onesignal v5.x).
    *
-   * @param subscriptionId El subscription ID (tokenPush) del dispositivo
+   * @param subscriptionId El subscription ID (UUID) del dispositivo
    * @param tags Objeto clave-valor. Enviar valor "" (vacío) para eliminar un tag.
    */
   async updateDeviceTags(
@@ -145,63 +149,59 @@ export class OnesignalService {
       `Actualizando tags de ${subscriptionId}: ${JSON.stringify(tags)}`,
     );
 
-    try {
-      const response = await fetch(
-        `${this.baseUrl}/players/${subscriptionId}`,
-        {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json; charset=utf-8',
-            Authorization: `Basic ${this.restApiKey}`,
-          },
-          body: JSON.stringify({
-            app_id: this.appId,
-            tags,
-          }),
+    const response = await fetch(
+      `${this.baseUrl}/apps/${this.appId}/users/by/subscriptions/${subscriptionId}`,
+      {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8',
+          Authorization: this.authHeader,
         },
-      );
+        body: JSON.stringify({
+          properties: { tags },
+        }),
+      },
+    );
 
-      const data = await response.json();
+    const data = await response.json();
+    this.logger.debug(`[updateDeviceTags] HTTP ${response.status} | Response: ${JSON.stringify(data)}`);
 
-      this.logger.debug(`[updateDeviceTags] HTTP ${response.status} | Response: ${JSON.stringify(data)}`);
-
-      if (!response.ok) {
-        this.logger.error(
-          `Error actualizando tags: ${response.status} — ${JSON.stringify(data)}`,
-        );
-        return { success: false };
-      }
-
+    if (response.ok) {
       this.logger.log(`Tags actualizados OK para ${subscriptionId}`);
       return { success: true };
-    } catch (error) {
-      this.logger.error(
-        `Error actualizando tags: ${(error as Error).message}`,
-      );
+    }
+
+    // 404 = suscripción eliminada / token muerto → marcar como inválido
+    if (response.status === 404) {
+      this.logger.warn(`Suscripción ${subscriptionId} no encontrada en OneSignal (404).`);
       return { success: false };
     }
+
+    // Cualquier otro error (5xx, red, etc.) → lanzar para que syncTagsToOneSignal
+    // lo maneje en su .catch() sin tocar tokenPushValido en BD
+    throw new Error(`OneSignal updateDeviceTags error ${response.status}: ${JSON.stringify(data)}`);
   }
 
   /**
-   * Obtiene info de un dispositivo de OneSignal (player).
+   * Obtiene info de una suscripción de OneSignal (User Model API).
    */
   async getDevice(subscriptionId: string): Promise<any> {
     try {
       const response = await fetch(
-        `${this.baseUrl}/players/${subscriptionId}?app_id=${this.appId}`,
+        `${this.baseUrl}/apps/${this.appId}/subscriptions/${subscriptionId}`,
         {
-          headers: { Authorization: `Basic ${this.restApiKey}` },
+          headers: { Authorization: this.authHeader },
         },
       );
 
       if (!response.ok) {
-        this.logger.warn(`Dispositivo ${subscriptionId} no encontrado en OneSignal.`);
+        this.logger.warn(`Suscripción ${subscriptionId} no encontrada en OneSignal.`);
         return null;
       }
 
       return response.json();
     } catch (error) {
-      this.logger.error(`Error consultando dispositivo: ${(error as Error).message}`);
+      this.logger.error(`Error consultando suscripción: ${(error as Error).message}`);
       return null;
     }
   }
@@ -210,8 +210,8 @@ export class OnesignalService {
    * Verifica si un subscription ID es válido en OneSignal.
    */
   async isValidSubscription(subscriptionId: string): Promise<boolean> {
-    const device = await this.getDevice(subscriptionId);
-    return device !== null && device.id === subscriptionId;
+    const data = await this.getDevice(subscriptionId);
+    return data !== null && data.subscription?.id === subscriptionId;
   }
 
   /**
